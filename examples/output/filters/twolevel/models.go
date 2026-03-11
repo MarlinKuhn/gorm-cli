@@ -3,13 +3,30 @@
 package twolevel
 
 import (
+	"gorm.io/cli/gorm/examples/filters/twolevel"
 	"gorm.io/cli/gorm/field"
 )
+
+func newS1StructRelation(prefix string, depth int) field.Struct[twolevel.S1] {
+	return field.Struct[twolevel.S1]{}.WithName(prefix)
+}
+
+func newS1SliceRelation(prefix string, depth int) field.Slice[twolevel.S1] {
+	return field.Slice[twolevel.S1]{}.WithName(prefix)
+}
 
 var S1 = struct {
 	ID field.Number[int]
 }{
 	ID: field.Number[int]{}.WithColumn("id"),
+}
+
+func newS2StructRelation(prefix string, depth int) field.Struct[twolevel.S2] {
+	return field.Struct[twolevel.S2]{}.WithName(prefix)
+}
+
+func newS2SliceRelation(prefix string, depth int) field.Slice[twolevel.S2] {
+	return field.Slice[twolevel.S2]{}.WithName(prefix)
 }
 
 var S2 = struct {

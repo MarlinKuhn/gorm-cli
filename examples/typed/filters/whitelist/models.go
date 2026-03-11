@@ -3,8 +3,17 @@
 package whitelist
 
 import (
+	"gorm.io/cli/gorm/examples/filters/whitelist"
 	"gorm.io/cli/gorm/field"
 )
+
+func newS1StructRelation(prefix string, depth int) field.Struct[whitelist.S1] {
+	return field.Struct[whitelist.S1]{}.WithName(prefix)
+}
+
+func newS1SliceRelation(prefix string, depth int) field.Slice[whitelist.S1] {
+	return field.Slice[whitelist.S1]{}.WithName(prefix)
+}
 
 var S1 = struct {
 	ID   field.Number[int]

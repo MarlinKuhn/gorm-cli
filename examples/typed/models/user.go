@@ -283,6 +283,14 @@ var Language = struct {
 	Name: field.String{}.WithColumn("name"),
 }
 
+func newCreditCardStructRelation(prefix string, depth int) field.Struct[models.CreditCard] {
+	return field.Struct[models.CreditCard]{}.WithName(prefix)
+}
+
+func newCreditCardSliceRelation(prefix string, depth int) field.Slice[models.CreditCard] {
+	return field.Slice[models.CreditCard]{}.WithName(prefix)
+}
+
 var CreditCard = struct {
 	ID        field.Number[uint]
 	CreatedAt field.Time

@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"sort"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	"text/template"
 	"unicode"
 
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/tools/imports"
 	"gorm.io/cli/gorm/genconfig"
 )
@@ -65,11 +67,10 @@ type (
 		Type string
 	}
 	Struct struct {
-		Name                string
-		Doc                 string
-		Fields              []Field
-		RelationFields      []RelationField
-		NeedsRelationHelper bool
+		Name           string
+		Doc            string
+		Fields         []Field
+		RelationFields []RelationField
 	}
 	RelationField struct {
 		Name        string
@@ -91,6 +92,23 @@ type (
 )
 
 const maxRelationChainDepth = 4
+
+type generateTask struct {
+	file    *File
+	outPath string
+}
+
+func workerLimit(taskCount int) int {
+	cores := runtime.NumCPU()
+	switch {
+	case taskCount <= 0:
+		return 1
+	case taskCount < cores:
+		return taskCount
+	default:
+		return cores
+	}
+}
 
 // Process processes input files or directories and generates code
 func (g *Generator) Process(input string) error {
@@ -126,6 +144,7 @@ func (g *Generator) Gen() error {
 	}
 	sort.Strings(filesWithCfg)
 
+	var tasks []generateTask
 	for _, file := range g.Files {
 		outPath := g.outPath
 		for i := len(filesWithCfg) - 1; i >= 0; i-- {
@@ -211,40 +230,44 @@ func (g *Generator) Gen() error {
 
 		for i := range file.Structs {
 			file.Structs[i].RelationFields = file.buildRelationFields(file.Structs[i])
-			file.Structs[i].NeedsRelationHelper = len(file.Structs[i].RelationFields) > 0
-		}
-		for i := range file.Structs {
-			for _, relation := range file.Structs[i].RelationFields {
-				if relation.Reusable && relation.Target != nil {
-					relation.Target.NeedsRelationHelper = true
-				}
-			}
 		}
 
 		outPath = filepath.Join(outPath, file.relPath)
 		file.ToPackage = filepath.Base(filepath.Dir(outPath))
+		tasks = append(tasks, generateTask{
+			file:    file,
+			outPath: outPath,
+		})
+	}
 
-		var results bytes.Buffer
-		if err := tmpl.Execute(&results, file); err != nil {
-			return fmt.Errorf("failed to render template %v, got error %v", file.inputPath, err)
-		}
-
-		if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-			return fmt.Errorf("failed to create directory for %v, got error %v", outPath, err)
-		}
-
-		fmt.Printf("Generating file %s from %s...\n", outPath, file.inputPath)
-		if err := os.WriteFile(outPath, results.Bytes(), 0o640); err != nil {
-			return fmt.Errorf("failed to write file %v, got error %v", outPath, err)
-		}
-
-		if result, err := imports.Process(outPath, results.Bytes(), nil); err == nil {
-			if err := os.WriteFile(outPath, result, 0o640); err != nil {
-				return fmt.Errorf("failed to write file %v, got error %v", outPath, err)
+	var eg errgroup.Group
+	eg.SetLimit(workerLimit(len(tasks)))
+	for _, task := range tasks {
+		task := task
+		eg.Go(func() error {
+			var results bytes.Buffer
+			if err := tmpl.Execute(&results, task.file); err != nil {
+				return fmt.Errorf("failed to render template %v, got error %v", task.file.inputPath, err)
 			}
-		} else {
-			return fmt.Errorf("failed to format generated code for %v, got error %v", outPath, err)
-		}
+
+			if err := os.MkdirAll(filepath.Dir(task.outPath), 0o755); err != nil {
+				return fmt.Errorf("failed to create directory for %v, got error %v", task.outPath, err)
+			}
+
+			fmt.Printf("Generating file %s from %s...\n", task.outPath, task.file.inputPath)
+			formatted, err := imports.Process(task.outPath, results.Bytes(), nil)
+			if err != nil {
+				return fmt.Errorf("failed to format generated code for %v, got error %v", task.outPath, err)
+			}
+			if err := os.WriteFile(task.outPath, formatted, 0o640); err != nil {
+				return fmt.Errorf("failed to write file %v, got error %v", task.outPath, err)
+			}
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return err
 	}
 	return nil
 }

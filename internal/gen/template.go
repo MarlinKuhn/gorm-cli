@@ -48,7 +48,6 @@ func (e {{$IfaceName}}Impl[T]) {{.Name}}({{.ParamsString}}) ({{.ResultString}}) 
 {{end}}
 
 {{range .Structs}}
-{{if .NeedsRelationHelper}}
 {{if .HasRelationFields}}
 type {{.RelationsFieldsTypeName}} struct {
 	{{range .RelationFields -}}
@@ -111,7 +110,6 @@ func {{.NewSliceRelationFuncName}}(prefix string, depth int) field.Slice[{{$.Pac
 
 {{if .HasRelations}}
 var {{.RelationsVarName}} = {{.NewRelationsFieldsFuncName}}("", {{$.MaxRelationDepth}})
-{{end}}
 {{end}}
 
 var {{.Name}} = struct {

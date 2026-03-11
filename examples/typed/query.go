@@ -183,6 +183,14 @@ func (e _QueryImpl[T]) FilterWithTime(ctx context.Context, start time.Time, end 
 	return result, err
 }
 
+func newParamsStructRelation(prefix string, depth int) field.Struct[examples.Params] {
+	return field.Struct[examples.Params]{}.WithName(prefix)
+}
+
+func newParamsSliceRelation(prefix string, depth int) field.Slice[examples.Params] {
+	return field.Slice[examples.Params]{}.WithName(prefix)
+}
+
 var Params = struct {
 	Name field.String
 	Age  field.Number[int]
