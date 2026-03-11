@@ -65,9 +65,16 @@ type (
 		Type string
 	}
 	Struct struct {
-		Name   string
-		Doc    string
-		Fields []Field
+		Name      string
+		Doc       string
+		Fields    []Field
+		Relations []RelationNode
+	}
+	RelationNode struct {
+		Name     string
+		Type     string
+		Value    string
+		Children []RelationNode
 	}
 	Field struct {
 		Name        string
@@ -79,6 +86,8 @@ type (
 		field       *ast.Field
 	}
 )
+
+const maxRelationChainDepth = 4
 
 // Process processes input files or directories and generates code
 func (g *Generator) Process(input string) error {
@@ -195,6 +204,12 @@ func (g *Generator) Gen() error {
 
 		if len(file.Interfaces) == 0 && len(file.Structs) == 0 {
 			continue
+		}
+
+		for i := range file.Structs {
+			file.Structs[i].Relations = file.buildRelationNodes(file.Structs[i], "", map[string]int{
+				file.structKey(file.Structs[i]): 1,
+			}, 0)
 		}
 
 		outPath = filepath.Join(outPath, file.relPath)
@@ -558,6 +573,135 @@ func (f Field) Value() string {
 
 	// Regular field
 	return fmt.Sprintf("%s{}.WithColumn(%q)", fieldType, f.DBName)
+}
+
+func (s Struct) HasRelations() bool {
+	return len(s.Relations) > 0
+}
+
+func (s Struct) RelationsVarName() string {
+	return s.Name + "Relations"
+}
+
+func (f Field) relationBaseType() (string, bool) {
+	goType := f.processGenericType(f.GoType)
+	if strings.HasPrefix(goType, "*") {
+		goType = strings.TrimPrefix(goType, "*")
+	}
+	if strings.HasPrefix(goType, "[]") {
+		return fmt.Sprintf("field.Slice[%s]", strings.TrimPrefix(goType, "[]")), true
+	}
+	return fmt.Sprintf("field.Struct[%s]", goType), true
+}
+
+func (f Field) relationTargetType() (pkgPath, typeName string, ok bool) {
+	goType := strings.TrimSpace(f.GoType)
+	for {
+		switch {
+		case strings.HasPrefix(goType, "*"):
+			goType = strings.TrimPrefix(goType, "*")
+		case strings.HasPrefix(goType, "[]"):
+			goType = strings.TrimPrefix(goType, "[]")
+		default:
+			goto normalized
+		}
+	}
+
+normalized:
+	if idx := strings.Index(goType, "["); idx >= 0 {
+		goType = goType[:idx]
+	}
+
+	lastDot := strings.LastIndex(goType, ".")
+	if lastDot == -1 {
+		if f.file.PackagePath != "" {
+			return f.file.PackagePath, goType, true
+		}
+		if f.file.Package != "" {
+			return f.file.Package, goType, true
+		}
+		return "", goType, true
+	}
+
+	pkgPath = goType[:lastDot]
+	typeName = goType[lastDot+1:]
+	if !strings.Contains(pkgPath, "/") {
+		pkgPath = f.file.getFullImportPath(pkgPath)
+	}
+	return pkgPath, typeName, true
+}
+
+func (g *Generator) findStruct(pkgPath, typeName string) *Struct {
+	for _, file := range g.Files {
+		for i := range file.Structs {
+			st := &file.Structs[i]
+			if st.Name == typeName && file.PackagePath == pkgPath {
+				return st
+			}
+		}
+	}
+	return nil
+}
+
+func (f *File) structKey(s Struct) string {
+	if f.PackagePath != "" {
+		return f.PackagePath + "." + s.Name
+	}
+	return f.Package + "." + s.Name
+}
+
+func cloneVisitCounts(src map[string]int) map[string]int {
+	dst := make(map[string]int, len(src))
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
+
+func (f *File) buildRelationNodes(s Struct, prefix string, visited map[string]int, depth int) []RelationNode {
+	if depth >= maxRelationChainDepth {
+		return nil
+	}
+
+	nodes := make([]RelationNode, 0)
+	for _, field := range s.Fields {
+		pkgPath, typeName, ok := field.relationTargetType()
+		if !ok {
+			continue
+		}
+
+		target := f.Generator.findStruct(pkgPath, typeName)
+		if target == nil {
+			continue
+		}
+
+		relationType, ok := field.relationBaseType()
+		if !ok {
+			continue
+		}
+
+		path := field.Name
+		if prefix != "" {
+			path = prefix + "." + field.Name
+		}
+
+		node := RelationNode{
+			Name:  field.Name,
+			Type:  relationType,
+			Value: fmt.Sprintf("%s{}.WithName(%q)", relationType, path),
+		}
+
+		targetKey := pkgPath + "." + typeName
+		if visited[targetKey] < 2 {
+			nextVisited := cloneVisitCounts(visited)
+			nextVisited[targetKey]++
+			node.Children = f.buildRelationNodes(*target, path, nextVisited, depth+1)
+		}
+
+		nodes = append(nodes, node)
+	}
+
+	return nodes
 }
 
 // Visit implements ast.Visitor to traverse AST nodes and extract imports, interfaces, and structs

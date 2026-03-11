@@ -76,6 +76,34 @@ func TestAssociation_Create_MultipleParents(t *testing.T) {
 	}
 }
 
+func TestAssociation_Preload_ChainedRelations(t *testing.T) {
+	db := setupTestDB(t)
+	users := seedUsers(t, db)
+	u := users[0]
+
+	pet := models.Pet{Name: "buddy", UserID: &u.ID}
+	if err := db.Create(&pet).Error; err != nil {
+		t.Fatalf("seed pet failed: %v", err)
+	}
+	if err := db.Create(&models.Toy{Name: "rope", OwnerID: pet.ID, OwnerType: "pets"}).Error; err != nil {
+		t.Fatalf("seed toy failed: %v", err)
+	}
+
+	got, err := typed.G[models.User](db).
+		Where(generated.User.ID.Eq(u.ID)).
+		Preload(generated.UserRelations.Pets.Toy, func(db typed.PreloadBuilder) error { return nil }).
+		First(context.Background())
+	if err != nil {
+		t.Fatalf("preload chained relation failed: %v", err)
+	}
+	if len(got.Pets) != 1 {
+		t.Fatalf("expected 1 preloaded pet, got %d", len(got.Pets))
+	}
+	if got.Pets[0].Toy.ID == 0 || got.Pets[0].Toy.Name != "rope" {
+		t.Fatalf("expected pet toy to be preloaded, got %#v", got.Pets[0].Toy)
+	}
+}
+
 func TestAssociation_Update_WithConditions(t *testing.T) {
 	db := setupTestDB(t)
 	users := seedUsers(t, db)

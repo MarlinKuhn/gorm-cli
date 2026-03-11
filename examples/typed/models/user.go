@@ -7,6 +7,8 @@ import (
 
 	"gorm.io/cli/gorm/examples"
 	"gorm.io/cli/gorm/examples/models"
+	"gorm.io/cli/gorm/examples/models/enum"
+	enum2 "gorm.io/cli/gorm/examples/models/enum/enum"
 	"gorm.io/cli/gorm/field"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -36,6 +38,10 @@ var User = struct {
 	IsAdult    field.Bool
 	Profile    examples.JSON
 	AwardTypes field.Struct[datatypes.JSONSlice[int]]
+	TagTypes   field.Struct[datatypes.JSONSlice[models.UserTagType]]
+	Tag        field.Field[models.UserTagType]
+	Enum       field.Field[enum.Enum]
+	Enum2      field.Field[enum2.Enum]
 }{
 	ID:         field.Number[uint]{}.WithColumn("id"),
 	CreatedAt:  field.Time{}.WithColumn("created_at"),
@@ -60,6 +66,165 @@ var User = struct {
 	IsAdult:    field.Bool{}.WithColumn("is_adult"),
 	Profile:    examples.JSON{}.WithColumn("profile"),
 	AwardTypes: field.Struct[datatypes.JSONSlice[int]]{}.WithName("AwardTypes"),
+	TagTypes:   field.Struct[datatypes.JSONSlice[models.UserTagType]]{}.WithName("TagTypes"),
+	Tag:        field.Field[models.UserTagType]{}.WithColumn("tag"),
+	Enum:       field.Field[enum.Enum]{}.WithColumn("enum"),
+	Enum2:      field.Field[enum2.Enum]{}.WithColumn("enum2"),
+}
+
+var UserRelations = struct {
+	Account field.Struct[models.Account]
+	Pets    struct {
+		field.Slice[models.Pet]
+		Toy field.Struct[models.Toy]
+	}
+	Toys    field.Slice[models.Toy]
+	Company field.Struct[models.Company]
+	Manager struct {
+		field.Struct[models.User]
+		Account field.Struct[models.Account]
+		Pets    struct {
+			field.Slice[models.Pet]
+			Toy field.Struct[models.Toy]
+		}
+		Toys      field.Slice[models.Toy]
+		Company   field.Struct[models.Company]
+		Manager   field.Struct[models.User]
+		Team      field.Slice[models.User]
+		Languages field.Slice[models.Language]
+		Friends   field.Slice[models.User]
+	}
+	Team struct {
+		field.Slice[models.User]
+		Account field.Struct[models.Account]
+		Pets    struct {
+			field.Slice[models.Pet]
+			Toy field.Struct[models.Toy]
+		}
+		Toys      field.Slice[models.Toy]
+		Company   field.Struct[models.Company]
+		Manager   field.Struct[models.User]
+		Team      field.Slice[models.User]
+		Languages field.Slice[models.Language]
+		Friends   field.Slice[models.User]
+	}
+	Languages field.Slice[models.Language]
+	Friends   struct {
+		field.Slice[models.User]
+		Account field.Struct[models.Account]
+		Pets    struct {
+			field.Slice[models.Pet]
+			Toy field.Struct[models.Toy]
+		}
+		Toys      field.Slice[models.Toy]
+		Company   field.Struct[models.Company]
+		Manager   field.Struct[models.User]
+		Team      field.Slice[models.User]
+		Languages field.Slice[models.Language]
+		Friends   field.Slice[models.User]
+	}
+}{
+	Account: field.Struct[models.Account]{}.WithName("Account"),
+	Pets: struct {
+		field.Slice[models.Pet]
+		Toy field.Struct[models.Toy]
+	}{
+		field.Slice[models.Pet]{}.WithName("Pets"),
+		field.Struct[models.Toy]{}.WithName("Pets.Toy"),
+	},
+	Toys:    field.Slice[models.Toy]{}.WithName("Toys"),
+	Company: field.Struct[models.Company]{}.WithName("Company"),
+	Manager: struct {
+		field.Struct[models.User]
+		Account field.Struct[models.Account]
+		Pets    struct {
+			field.Slice[models.Pet]
+			Toy field.Struct[models.Toy]
+		}
+		Toys      field.Slice[models.Toy]
+		Company   field.Struct[models.Company]
+		Manager   field.Struct[models.User]
+		Team      field.Slice[models.User]
+		Languages field.Slice[models.Language]
+		Friends   field.Slice[models.User]
+	}{
+		field.Struct[models.User]{}.WithName("Manager"),
+		field.Struct[models.Account]{}.WithName("Manager.Account"),
+		struct {
+			field.Slice[models.Pet]
+			Toy field.Struct[models.Toy]
+		}{
+			field.Slice[models.Pet]{}.WithName("Manager.Pets"),
+			field.Struct[models.Toy]{}.WithName("Manager.Pets.Toy"),
+		},
+		field.Slice[models.Toy]{}.WithName("Manager.Toys"),
+		field.Struct[models.Company]{}.WithName("Manager.Company"),
+		field.Struct[models.User]{}.WithName("Manager.Manager"),
+		field.Slice[models.User]{}.WithName("Manager.Team"),
+		field.Slice[models.Language]{}.WithName("Manager.Languages"),
+		field.Slice[models.User]{}.WithName("Manager.Friends"),
+	},
+	Team: struct {
+		field.Slice[models.User]
+		Account field.Struct[models.Account]
+		Pets    struct {
+			field.Slice[models.Pet]
+			Toy field.Struct[models.Toy]
+		}
+		Toys      field.Slice[models.Toy]
+		Company   field.Struct[models.Company]
+		Manager   field.Struct[models.User]
+		Team      field.Slice[models.User]
+		Languages field.Slice[models.Language]
+		Friends   field.Slice[models.User]
+	}{
+		field.Slice[models.User]{}.WithName("Team"),
+		field.Struct[models.Account]{}.WithName("Team.Account"),
+		struct {
+			field.Slice[models.Pet]
+			Toy field.Struct[models.Toy]
+		}{
+			field.Slice[models.Pet]{}.WithName("Team.Pets"),
+			field.Struct[models.Toy]{}.WithName("Team.Pets.Toy"),
+		},
+		field.Slice[models.Toy]{}.WithName("Team.Toys"),
+		field.Struct[models.Company]{}.WithName("Team.Company"),
+		field.Struct[models.User]{}.WithName("Team.Manager"),
+		field.Slice[models.User]{}.WithName("Team.Team"),
+		field.Slice[models.Language]{}.WithName("Team.Languages"),
+		field.Slice[models.User]{}.WithName("Team.Friends"),
+	},
+	Languages: field.Slice[models.Language]{}.WithName("Languages"),
+	Friends: struct {
+		field.Slice[models.User]
+		Account field.Struct[models.Account]
+		Pets    struct {
+			field.Slice[models.Pet]
+			Toy field.Struct[models.Toy]
+		}
+		Toys      field.Slice[models.Toy]
+		Company   field.Struct[models.Company]
+		Manager   field.Struct[models.User]
+		Team      field.Slice[models.User]
+		Languages field.Slice[models.Language]
+		Friends   field.Slice[models.User]
+	}{
+		field.Slice[models.User]{}.WithName("Friends"),
+		field.Struct[models.Account]{}.WithName("Friends.Account"),
+		struct {
+			field.Slice[models.Pet]
+			Toy field.Struct[models.Toy]
+		}{
+			field.Slice[models.Pet]{}.WithName("Friends.Pets"),
+			field.Struct[models.Toy]{}.WithName("Friends.Pets.Toy"),
+		},
+		field.Slice[models.Toy]{}.WithName("Friends.Toys"),
+		field.Struct[models.Company]{}.WithName("Friends.Company"),
+		field.Struct[models.User]{}.WithName("Friends.Manager"),
+		field.Slice[models.User]{}.WithName("Friends.Team"),
+		field.Slice[models.Language]{}.WithName("Friends.Languages"),
+		field.Slice[models.User]{}.WithName("Friends.Friends"),
+	},
 }
 
 var Account = struct {
@@ -98,6 +263,12 @@ var Pet = struct {
 	UserID:    field.Number[uint]{}.WithColumn("user_id"),
 	Name:      field.String{}.WithColumn("name"),
 	Toy:       field.Struct[models.Toy]{}.WithName("Toy"),
+}
+
+var PetRelations = struct {
+	Toy field.Struct[models.Toy]
+}{
+	Toy: field.Struct[models.Toy]{}.WithName("Toy"),
 }
 
 var Toy = struct {

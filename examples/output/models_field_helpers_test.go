@@ -362,6 +362,12 @@ func TestGeneratedModels_FieldTypes(t *testing.T) {
 		_ field.Slice[models.User]     = generated.User.Team
 		_ field.Slice[models.Language] = generated.User.Languages
 		_ field.Slice[models.User]     = generated.User.Friends
+		_ field.AssociationInterface   = generated.UserRelations.Account
+		_ field.AssociationInterface   = generated.UserRelations.Pets
+		_ field.AssociationInterface   = generated.UserRelations.Pets.Toy
+		_ field.AssociationInterface   = generated.UserRelations.Manager
+		_ field.AssociationInterface   = generated.UserRelations.Manager.Account
+		_ field.AssociationInterface   = generated.UserRelations.Team.Pets.Toy
 
 		// Account
 		_ field.Number[uint]          = generated.Account.ID
@@ -379,6 +385,7 @@ func TestGeneratedModels_FieldTypes(t *testing.T) {
 		_ field.Number[uint]          = generated.Pet.UserID
 		_ field.String                = generated.Pet.Name
 		_ field.Struct[models.Toy]    = generated.Pet.Toy
+		_ field.AssociationInterface  = generated.PetRelations.Toy
 
 		// Toy
 		_ field.Number[uint]          = generated.Toy.ID
