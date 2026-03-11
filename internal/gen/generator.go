@@ -65,16 +65,19 @@ type (
 		Type string
 	}
 	Struct struct {
-		Name      string
-		Doc       string
-		Fields    []Field
-		Relations []RelationNode
+		Name                string
+		Doc                 string
+		Fields              []Field
+		RelationFields      []RelationField
+		NeedsRelationHelper bool
 	}
-	RelationNode struct {
-		Name     string
-		Type     string
-		Value    string
-		Children []RelationNode
+	RelationField struct {
+		Name        string
+		BaseType    string
+		WrapperType string
+		Target      *Struct
+		IsSlice     bool
+		Reusable    bool
 	}
 	Field struct {
 		Name        string
@@ -207,9 +210,15 @@ func (g *Generator) Gen() error {
 		}
 
 		for i := range file.Structs {
-			file.Structs[i].Relations = file.buildRelationNodes(file.Structs[i], "", map[string]int{
-				file.structKey(file.Structs[i]): 1,
-			}, 0)
+			file.Structs[i].RelationFields = file.buildRelationFields(file.Structs[i])
+			file.Structs[i].NeedsRelationHelper = len(file.Structs[i].RelationFields) > 0
+		}
+		for i := range file.Structs {
+			for _, relation := range file.Structs[i].RelationFields {
+				if relation.Reusable && relation.Target != nil {
+					relation.Target.NeedsRelationHelper = true
+				}
+			}
 		}
 
 		outPath = filepath.Join(outPath, file.relPath)
@@ -576,22 +585,53 @@ func (f Field) Value() string {
 }
 
 func (s Struct) HasRelations() bool {
-	return len(s.Relations) > 0
+	return len(s.RelationFields) > 0
+}
+
+func lowerFirst(s string) string {
+	if s == "" {
+		return ""
+	}
+	return strings.ToLower(s[:1]) + s[1:]
 }
 
 func (s Struct) RelationsVarName() string {
 	return s.Name + "Relations"
 }
 
-func (f Field) relationBaseType() (string, bool) {
+func (s Struct) RelationsFieldsTypeName() string {
+	return lowerFirst(s.Name) + "RelationsFields"
+}
+
+func (s Struct) StructRelationTypeName() string {
+	return lowerFirst(s.Name) + "StructRelation"
+}
+
+func (s Struct) SliceRelationTypeName() string {
+	return lowerFirst(s.Name) + "SliceRelation"
+}
+
+func (s Struct) NewRelationsFieldsFuncName() string {
+	return "new" + s.Name + "RelationsFields"
+}
+
+func (s Struct) NewStructRelationFuncName() string {
+	return "new" + s.Name + "StructRelation"
+}
+
+func (s Struct) NewSliceRelationFuncName() string {
+	return "new" + s.Name + "SliceRelation"
+}
+
+func (f Field) relationBaseType() (string, bool, bool) {
 	goType := f.processGenericType(f.GoType)
 	if strings.HasPrefix(goType, "*") {
 		goType = strings.TrimPrefix(goType, "*")
 	}
 	if strings.HasPrefix(goType, "[]") {
-		return fmt.Sprintf("field.Slice[%s]", strings.TrimPrefix(goType, "[]")), true
+		return fmt.Sprintf("field.Slice[%s]", strings.TrimPrefix(goType, "[]")), true, true
 	}
-	return fmt.Sprintf("field.Struct[%s]", goType), true
+	return fmt.Sprintf("field.Struct[%s]", goType), false, true
 }
 
 func (f Field) relationTargetType() (pkgPath, typeName string, ok bool) {
@@ -643,27 +683,42 @@ func (g *Generator) findStruct(pkgPath, typeName string) *Struct {
 	return nil
 }
 
-func (f *File) structKey(s Struct) string {
-	if f.PackagePath != "" {
-		return f.PackagePath + "." + s.Name
+func (rf RelationField) InitExpr() string {
+	pathExpr := fmt.Sprintf("joinRelationPath(prefix, %q)", rf.Name)
+	if !rf.Reusable || rf.Target == nil {
+		return fmt.Sprintf("%s{}.WithName(%s)", rf.BaseType, pathExpr)
 	}
-	return f.Package + "." + s.Name
+	if rf.IsSlice {
+		return fmt.Sprintf("%s(%s, depth-1)", rf.Target.NewSliceRelationFuncName(), pathExpr)
+	}
+	return fmt.Sprintf("%s(%s, depth-1)", rf.Target.NewStructRelationFuncName(), pathExpr)
 }
 
-func cloneVisitCounts(src map[string]int) map[string]int {
-	dst := make(map[string]int, len(src))
-	for k, v := range src {
-		dst[k] = v
+func (rf RelationField) TypeExpr() string {
+	if rf.Reusable && rf.Target != nil {
+		if rf.IsSlice {
+			return "*" + rf.Target.SliceRelationTypeName()
+		}
+		return "*" + rf.Target.StructRelationTypeName()
 	}
-	return dst
+	return rf.BaseType
 }
 
-func (f *File) buildRelationNodes(s Struct, prefix string, visited map[string]int, depth int) []RelationNode {
-	if depth >= maxRelationChainDepth {
-		return nil
-	}
+func (f File) MaxRelationDepth() int {
+	return maxRelationChainDepth
+}
 
-	nodes := make([]RelationNode, 0)
+func (f File) HasAnyRelations() bool {
+	for _, s := range f.Structs {
+		if len(s.RelationFields) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *File) buildRelationFields(s Struct) []RelationField {
+	fields := make([]RelationField, 0)
 	for _, field := range s.Fields {
 		pkgPath, typeName, ok := field.relationTargetType()
 		if !ok {
@@ -675,33 +730,23 @@ func (f *File) buildRelationNodes(s Struct, prefix string, visited map[string]in
 			continue
 		}
 
-		relationType, ok := field.relationBaseType()
+		relationType, isSlice, ok := field.relationBaseType()
 		if !ok {
 			continue
 		}
 
-		path := field.Name
-		if prefix != "" {
-			path = prefix + "." + field.Name
-		}
+		reusable := pkgPath == f.PackagePath && len(target.Fields) > 0
 
-		node := RelationNode{
-			Name:  field.Name,
-			Type:  relationType,
-			Value: fmt.Sprintf("%s{}.WithName(%q)", relationType, path),
-		}
-
-		targetKey := pkgPath + "." + typeName
-		if visited[targetKey] < 2 {
-			nextVisited := cloneVisitCounts(visited)
-			nextVisited[targetKey]++
-			node.Children = f.buildRelationNodes(*target, path, nextVisited, depth+1)
-		}
-
-		nodes = append(nodes, node)
+		fields = append(fields, RelationField{
+			Name:        field.Name,
+			BaseType:    relationType,
+			WrapperType: relationType,
+			Target:      target,
+			IsSlice:     isSlice,
+			Reusable:    reusable,
+		})
 	}
-
-	return nodes
+	return fields
 }
 
 // Visit implements ast.Visitor to traverse AST nodes and extract imports, interfaces, and structs
