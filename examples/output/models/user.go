@@ -15,26 +15,14 @@ import (
 	"gorm.io/gorm"
 )
 
-func joinRelationPath(prefix, name string) string {
-	if prefix == "" {
-		return name
-	}
-	var b strings.Builder
-	b.Grow(len(prefix) + len(name) + 1)
-	b.WriteString(prefix)
-	b.WriteByte('.')
-	b.WriteString(name)
-	return b.String()
-}
-
 type userRelationsFields struct {
-	Account   *accountStructRelation
+	Account   field.Struct[models.Account]
 	Pets      *petSliceRelation
-	Toys      *toySliceRelation
-	Company   *companyStructRelation
+	Toys      field.Slice[models.Toy]
+	Company   field.Struct[models.Company]
 	Manager   *userStructRelation
 	Team      *userSliceRelation
-	Languages *languageSliceRelation
+	Languages field.Slice[models.Language]
 	Friends   *userSliceRelation
 }
 
@@ -50,14 +38,14 @@ type userSliceRelation struct {
 
 func newUserRelationsFields(prefix string, depth int) userRelationsFields {
 	return userRelationsFields{
-		Account:   newAccountStructRelation(joinRelationPath(prefix, "Account"), depth-1),
-		Pets:      newPetSliceRelation(joinRelationPath(prefix, "Pets"), depth-1),
-		Toys:      newToySliceRelation(joinRelationPath(prefix, "Toys"), depth-1),
-		Company:   newCompanyStructRelation(joinRelationPath(prefix, "Company"), depth-1),
-		Manager:   newUserStructRelation(joinRelationPath(prefix, "Manager"), depth-1),
-		Team:      newUserSliceRelation(joinRelationPath(prefix, "Team"), depth-1),
-		Languages: newLanguageSliceRelation(joinRelationPath(prefix, "Languages"), depth-1),
-		Friends:   newUserSliceRelation(joinRelationPath(prefix, "Friends"), depth-1),
+		Account:   newAccountStructRelation(strings.TrimPrefix(prefix+".Account", "."), depth-1),
+		Pets:      newPetSliceRelation(strings.TrimPrefix(prefix+".Pets", "."), depth-1),
+		Toys:      newToySliceRelation(strings.TrimPrefix(prefix+".Toys", "."), depth-1),
+		Company:   newCompanyStructRelation(strings.TrimPrefix(prefix+".Company", "."), depth-1),
+		Manager:   newUserStructRelation(strings.TrimPrefix(prefix+".Manager", "."), depth-1),
+		Team:      newUserSliceRelation(strings.TrimPrefix(prefix+".Team", "."), depth-1),
+		Languages: newLanguageSliceRelation(strings.TrimPrefix(prefix+".Languages", "."), depth-1),
+		Friends:   newUserSliceRelation(strings.TrimPrefix(prefix+".Friends", "."), depth-1),
 	}
 }
 
@@ -145,45 +133,12 @@ var User = struct {
 	Enum2:      field.Field[enum2.Enum]{}.WithColumn("enum2"),
 }
 
-type accountRelationsFields struct {
+func newAccountStructRelation(prefix string, depth int) field.Struct[models.Account] {
+	return field.Struct[models.Account]{}.WithName(prefix)
 }
 
-type accountStructRelation struct {
-	field.Struct[models.Account]
-	accountRelationsFields
-}
-
-type accountSliceRelation struct {
-	field.Slice[models.Account]
-	accountRelationsFields
-}
-
-func newAccountRelationsFields(prefix string, depth int) accountRelationsFields {
-	return accountRelationsFields{}
-}
-
-func newAccountStructRelation(prefix string, depth int) *accountStructRelation {
-	rel := &accountStructRelation{
-		field.Struct[models.Account]{}.WithName(prefix),
-		accountRelationsFields{},
-	}
-	if depth <= 0 {
-		return rel
-	}
-	rel.accountRelationsFields = newAccountRelationsFields(prefix, depth)
-	return rel
-}
-
-func newAccountSliceRelation(prefix string, depth int) *accountSliceRelation {
-	rel := &accountSliceRelation{
-		field.Slice[models.Account]{}.WithName(prefix),
-		accountRelationsFields{},
-	}
-	if depth <= 0 {
-		return rel
-	}
-	rel.accountRelationsFields = newAccountRelationsFields(prefix, depth)
-	return rel
+func newAccountSliceRelation(prefix string, depth int) field.Slice[models.Account] {
+	return field.Slice[models.Account]{}.WithName(prefix)
 }
 
 var Account = struct {
@@ -207,7 +162,7 @@ var Account = struct {
 }
 
 type petRelationsFields struct {
-	Toy *toyStructRelation
+	Toy field.Struct[models.Toy]
 }
 
 type petStructRelation struct {
@@ -222,7 +177,7 @@ type petSliceRelation struct {
 
 func newPetRelationsFields(prefix string, depth int) petRelationsFields {
 	return petRelationsFields{
-		Toy: newToyStructRelation(joinRelationPath(prefix, "Toy"), depth-1),
+		Toy: newToyStructRelation(strings.TrimPrefix(prefix+".Toy", "."), depth-1),
 	}
 }
 
@@ -270,45 +225,12 @@ var Pet = struct {
 	Toy:       field.Struct[models.Toy]{}.WithName("Toy"),
 }
 
-type toyRelationsFields struct {
+func newToyStructRelation(prefix string, depth int) field.Struct[models.Toy] {
+	return field.Struct[models.Toy]{}.WithName(prefix)
 }
 
-type toyStructRelation struct {
-	field.Struct[models.Toy]
-	toyRelationsFields
-}
-
-type toySliceRelation struct {
-	field.Slice[models.Toy]
-	toyRelationsFields
-}
-
-func newToyRelationsFields(prefix string, depth int) toyRelationsFields {
-	return toyRelationsFields{}
-}
-
-func newToyStructRelation(prefix string, depth int) *toyStructRelation {
-	rel := &toyStructRelation{
-		field.Struct[models.Toy]{}.WithName(prefix),
-		toyRelationsFields{},
-	}
-	if depth <= 0 {
-		return rel
-	}
-	rel.toyRelationsFields = newToyRelationsFields(prefix, depth)
-	return rel
-}
-
-func newToySliceRelation(prefix string, depth int) *toySliceRelation {
-	rel := &toySliceRelation{
-		field.Slice[models.Toy]{}.WithName(prefix),
-		toyRelationsFields{},
-	}
-	if depth <= 0 {
-		return rel
-	}
-	rel.toyRelationsFields = newToyRelationsFields(prefix, depth)
-	return rel
+func newToySliceRelation(prefix string, depth int) field.Slice[models.Toy] {
+	return field.Slice[models.Toy]{}.WithName(prefix)
 }
 
 var Toy = struct {
@@ -329,45 +251,12 @@ var Toy = struct {
 	OwnerType: field.String{}.WithColumn("owner_type"),
 }
 
-type companyRelationsFields struct {
+func newCompanyStructRelation(prefix string, depth int) field.Struct[models.Company] {
+	return field.Struct[models.Company]{}.WithName(prefix)
 }
 
-type companyStructRelation struct {
-	field.Struct[models.Company]
-	companyRelationsFields
-}
-
-type companySliceRelation struct {
-	field.Slice[models.Company]
-	companyRelationsFields
-}
-
-func newCompanyRelationsFields(prefix string, depth int) companyRelationsFields {
-	return companyRelationsFields{}
-}
-
-func newCompanyStructRelation(prefix string, depth int) *companyStructRelation {
-	rel := &companyStructRelation{
-		field.Struct[models.Company]{}.WithName(prefix),
-		companyRelationsFields{},
-	}
-	if depth <= 0 {
-		return rel
-	}
-	rel.companyRelationsFields = newCompanyRelationsFields(prefix, depth)
-	return rel
-}
-
-func newCompanySliceRelation(prefix string, depth int) *companySliceRelation {
-	rel := &companySliceRelation{
-		field.Slice[models.Company]{}.WithName(prefix),
-		companyRelationsFields{},
-	}
-	if depth <= 0 {
-		return rel
-	}
-	rel.companyRelationsFields = newCompanyRelationsFields(prefix, depth)
-	return rel
+func newCompanySliceRelation(prefix string, depth int) field.Slice[models.Company] {
+	return field.Slice[models.Company]{}.WithName(prefix)
 }
 
 var Company = struct {
@@ -378,45 +267,12 @@ var Company = struct {
 	Name: field.String{}.WithColumn("name"),
 }
 
-type languageRelationsFields struct {
+func newLanguageStructRelation(prefix string, depth int) field.Struct[models.Language] {
+	return field.Struct[models.Language]{}.WithName(prefix)
 }
 
-type languageStructRelation struct {
-	field.Struct[models.Language]
-	languageRelationsFields
-}
-
-type languageSliceRelation struct {
-	field.Slice[models.Language]
-	languageRelationsFields
-}
-
-func newLanguageRelationsFields(prefix string, depth int) languageRelationsFields {
-	return languageRelationsFields{}
-}
-
-func newLanguageStructRelation(prefix string, depth int) *languageStructRelation {
-	rel := &languageStructRelation{
-		field.Struct[models.Language]{}.WithName(prefix),
-		languageRelationsFields{},
-	}
-	if depth <= 0 {
-		return rel
-	}
-	rel.languageRelationsFields = newLanguageRelationsFields(prefix, depth)
-	return rel
-}
-
-func newLanguageSliceRelation(prefix string, depth int) *languageSliceRelation {
-	rel := &languageSliceRelation{
-		field.Slice[models.Language]{}.WithName(prefix),
-		languageRelationsFields{},
-	}
-	if depth <= 0 {
-		return rel
-	}
-	rel.languageRelationsFields = newLanguageRelationsFields(prefix, depth)
-	return rel
+func newLanguageSliceRelation(prefix string, depth int) field.Slice[models.Language] {
+	return field.Slice[models.Language]{}.WithName(prefix)
 }
 
 var Language = struct {

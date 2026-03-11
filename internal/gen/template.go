@@ -21,20 +21,6 @@ import (
     {{end -}}
 )
 
-{{if .HasAnyRelations}}
-func joinRelationPath(prefix, name string) string {
-    if prefix == "" {
-        return name
-    }
-    var b strings.Builder
-    b.Grow(len(prefix) + len(name) + 1)
-    b.WriteString(prefix)
-    b.WriteByte('.')
-    b.WriteString(name)
-    return b.String()
-}
-{{end}}
-
 {{range .Interfaces}}
 {{$IfaceName := .IfaceName}}
 func {{.Name}}[T any](db *gorm.DB, opts ...clause.Expression) {{$IfaceName}}Interface[T] {
@@ -63,6 +49,7 @@ func (e {{$IfaceName}}Impl[T]) {{.Name}}({{.ParamsString}}) ({{.ResultString}}) 
 
 {{range .Structs}}
 {{if .NeedsRelationHelper}}
+{{if .HasRelationFields}}
 type {{.RelationsFieldsTypeName}} struct {
 	{{range .RelationFields -}}
 	{{.Name}} {{.TypeExpr}}
@@ -86,7 +73,9 @@ func {{.NewRelationsFieldsFuncName}}(prefix string, depth int) {{.RelationsField
 		{{end -}}
 	}
 }
+{{end}}
 
+{{if .HasRelationFields}}
 func {{.NewStructRelationFuncName}}(prefix string, depth int) *{{.StructRelationTypeName}} {
 	rel := &{{.StructRelationTypeName}}{
 		field.Struct[{{$.Package}}.{{.Name}}]{}.WithName(prefix),
@@ -110,6 +99,15 @@ func {{.NewSliceRelationFuncName}}(prefix string, depth int) *{{.SliceRelationTy
 	rel.{{.RelationsFieldsTypeName}} = {{.NewRelationsFieldsFuncName}}(prefix, depth)
 	return rel
 }
+{{else}}
+func {{.NewStructRelationFuncName}}(prefix string, depth int) field.Struct[{{$.Package}}.{{.Name}}] {
+	return field.Struct[{{$.Package}}.{{.Name}}]{}.WithName(prefix)
+}
+
+func {{.NewSliceRelationFuncName}}(prefix string, depth int) field.Slice[{{$.Package}}.{{.Name}}] {
+	return field.Slice[{{$.Package}}.{{.Name}}]{}.WithName(prefix)
+}
+{{end}}
 
 {{if .HasRelations}}
 var {{.RelationsVarName}} = {{.NewRelationsFieldsFuncName}}("", {{$.MaxRelationDepth}})

@@ -588,6 +588,10 @@ func (s Struct) HasRelations() bool {
 	return len(s.RelationFields) > 0
 }
 
+func (s Struct) HasRelationFields() bool {
+	return len(s.RelationFields) > 0
+}
+
 func lowerFirst(s string) string {
 	if s == "" {
 		return ""
@@ -684,7 +688,7 @@ func (g *Generator) findStruct(pkgPath, typeName string) *Struct {
 }
 
 func (rf RelationField) InitExpr() string {
-	pathExpr := fmt.Sprintf("joinRelationPath(prefix, %q)", rf.Name)
+	pathExpr := fmt.Sprintf("strings.TrimPrefix(prefix+%q, %q)", "."+rf.Name, ".")
 	if !rf.Reusable || rf.Target == nil {
 		return fmt.Sprintf("%s{}.WithName(%s)", rf.BaseType, pathExpr)
 	}
@@ -695,7 +699,7 @@ func (rf RelationField) InitExpr() string {
 }
 
 func (rf RelationField) TypeExpr() string {
-	if rf.Reusable && rf.Target != nil {
+	if rf.Reusable && rf.Target != nil && len(rf.Target.RelationFields) > 0 {
 		if rf.IsSlice {
 			return "*" + rf.Target.SliceRelationTypeName()
 		}
