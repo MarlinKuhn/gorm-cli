@@ -181,3 +181,44 @@ func TestFilters_PatternInclude(t *testing.T) {
 		t.Fatalf("Service should be excluded by IncludeInterfaces pattern Query*")
 	}
 }
+
+func TestFilters_SkipPrivateStructs(t *testing.T) {
+	dir := t.TempDir()
+
+	const goMod = "module temp.test\n\ngo 1.21\n"
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(goMod), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+
+	const src = `package sample
+
+type Public struct {
+	ID int
+}
+
+type private struct {
+	ID int
+}
+`
+	input := filepath.Join(dir, "models.go")
+	if err := os.WriteFile(input, []byte(src), 0o644); err != nil {
+		t.Fatalf("write models.go: %v", err)
+	}
+
+	out := filepath.Join(dir, "out")
+	g := &Generator{Files: map[string]*File{}, outPath: out}
+	if err := g.Process(input); err != nil {
+		t.Fatalf("Process: %v", err)
+	}
+	if err := g.Gen(); err != nil {
+		t.Fatalf("Gen: %v", err)
+	}
+
+	content := readAllGeneratedGoFiles(t, out)
+	if !strings.Contains(content, "var Public = struct") {
+		t.Fatalf("expected Public to be generated")
+	}
+	if strings.Contains(content, "var private = struct") {
+		t.Fatalf("expected private struct to be skipped")
+	}
+}

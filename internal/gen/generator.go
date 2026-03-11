@@ -804,6 +804,9 @@ func (p *File) Visit(n ast.Node) (w ast.Visitor) {
 		if data, ok := n.Type.(*ast.InterfaceType); ok {
 			p.Interfaces = append(p.Interfaces, p.processInterfaceType(n, data))
 		} else if data, ok := n.Type.(*ast.StructType); ok {
+			if !n.Name.IsExported() {
+				return p
+			}
 			if s := p.processStructType(n, data, ""); len(s.Fields) > 0 {
 				p.Structs = append(p.Structs, s)
 			}
