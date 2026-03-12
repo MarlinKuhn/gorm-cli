@@ -266,3 +266,78 @@ type Node[T any] struct {
 		}
 	}
 }
+
+func TestGenericCustomValueTypeUsesFieldWrapper(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module temp.test\n\ngo 1.21\n"), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+
+	src := `package sample
+
+import (
+	"database/sql/driver"
+	"encoding/json"
+)
+
+type JSON[T any] []T
+
+func (j *JSON[T]) Scan(value any) error {
+	switch v := value.(type) {
+	case []byte:
+		return json.Unmarshal(v, j)
+	case string:
+		return json.Unmarshal([]byte(v), j)
+	default:
+		return nil
+	}
+}
+
+func (j JSON[T]) Value() (driver.Value, error) {
+	return json.Marshal(j)
+}
+
+type User struct {
+	Tags JSON[string]
+}
+`
+
+	inputPath := filepath.Join(dir, "sample.go")
+	if err := os.WriteFile(inputPath, []byte(src), 0o644); err != nil {
+		t.Fatalf("write sample.go: %v", err)
+	}
+
+	outputDir := filepath.Join(dir, "out")
+	g := &Generator{Files: map[string]*File{}, OutPath: outputDir}
+
+	if err := g.Process(inputPath); err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+	if err := g.Gen(); err != nil {
+		t.Fatalf("Gen error: %v", err)
+	}
+
+	files, err := os.ReadDir(outputDir)
+	if err != nil {
+		t.Fatalf("read output dir: %v", err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected one generated file, got %d", len(files))
+	}
+
+	generatedFile := filepath.Join(outputDir, files[0].Name())
+	genBytes, err := os.ReadFile(generatedFile)
+	if err != nil {
+		t.Fatalf("read generated file: %v", err)
+	}
+	generated := string(genBytes)
+
+	if !strings.Contains(generated, "Tags field.Field[sample.JSON[string]]") {
+		t.Fatalf("generated output should use field.Field for custom value type\n%s", generated)
+	}
+
+	if strings.Contains(generated, "Tags field.Struct[sample.JSON[string]]") {
+		t.Fatalf("generated output should not use field.Struct for custom value type\n%s", generated)
+	}
+}

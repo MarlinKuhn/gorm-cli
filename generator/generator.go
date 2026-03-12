@@ -523,6 +523,8 @@ func (f Field) Type() string {
 		pkgName, typName = goType[:pkgIdx], goType[pkgIdx+1:]
 	}
 
+	typName = stripGeneric(typName)
+
 	// Handle regular field types
 	if mapped, ok := typeMap[goType]; ok {
 		return mapped
