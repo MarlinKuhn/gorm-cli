@@ -6,7 +6,7 @@ import (
 	"runtime/debug"
 
 	"github.com/spf13/cobra"
-	"gorm.io/cli/gorm/internal/gen"
+	"gorm.io/cli/gorm/generator"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 		Short: "GORM CLI Tool",
 	}
 
-	rootCmd.AddCommand(gen.New())
+	rootCmd.AddCommand(generator.New())
 	rootCmd.AddCommand(versionCmd())
 
 	if err := rootCmd.Execute(); err != nil {
