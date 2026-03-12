@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"text/template"
 )
@@ -200,5 +201,68 @@ func TestProcessStructType(t *testing.T) {
 	}
 	if !reflect.DeepEqual(trimmed, expected) {
 		t.Errorf("Expected %+v, \n got %+v", expected, trimmed)
+	}
+}
+
+func TestGenericRelationsIncludeTypeParametersInHelpers(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module temp.test\n\ngo 1.21\n"), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+
+	src := `package sample
+
+type Node[T any] struct {
+	Next     *Node[T]
+	Children []Node[T]
+	Value    T
+}
+`
+
+	inputPath := filepath.Join(dir, "sample.go")
+	if err := os.WriteFile(inputPath, []byte(src), 0o644); err != nil {
+		t.Fatalf("write sample.go: %v", err)
+	}
+
+	outputDir := filepath.Join(dir, "out")
+	g := &Generator{Files: map[string]*File{}, outPath: outputDir}
+
+	if err := g.Process(inputPath); err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+	if err := g.Gen(); err != nil {
+		t.Fatalf("Gen error: %v", err)
+	}
+
+	files, err := os.ReadDir(outputDir)
+	if err != nil {
+		t.Fatalf("read output dir: %v", err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected one generated file, got %d", len(files))
+	}
+
+	generatedFile := filepath.Join(outputDir, files[0].Name())
+	genBytes, err := os.ReadFile(generatedFile)
+	if err != nil {
+		t.Fatalf("read generated file: %v", err)
+	}
+	generated := string(genBytes)
+
+	for _, want := range []string{
+		"type nodeRelationsFields[T any] struct {",
+		"type nodeStructRelation[T any] struct {",
+		"type nodeSliceRelation[T any] struct {",
+		"func newNodeStructRelation[T any](prefix string, depth int) *nodeStructRelation[T] {",
+		"func newNodeSliceRelation[T any](prefix string, depth int) *nodeSliceRelation[T] {",
+		"field.Struct[sample.Node[T]]{}.WithName(prefix)",
+		"field.Slice[sample.Node[T]]{}.WithName(prefix)",
+		"Next:     newNodeStructRelation[T](strings.TrimPrefix(prefix+\".Next\", \".\"), depth-1),",
+		"Children: newNodeSliceRelation[T](strings.TrimPrefix(prefix+\".Children\", \".\"), depth-1),",
+	} {
+		if !strings.Contains(generated, want) {
+			t.Fatalf("generated output missing %q\n%s", want, generated)
+		}
 	}
 }

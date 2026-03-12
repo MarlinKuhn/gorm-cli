@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/printer"
 	"go/token"
 	"os"
 	"path"
@@ -68,6 +69,8 @@ type (
 	}
 	Struct struct {
 		Name           string
+		TypeParamsDecl string
+		TypeParamsUse  string
 		Doc            string
 		Fields         []Field
 		RelationFields []RelationField
@@ -626,6 +629,18 @@ func (s Struct) RelationsVarName() string {
 	return s.Name + "Relations"
 }
 
+func (s Struct) TypeParamsSuffix() string {
+	return s.TypeParamsDecl
+}
+
+func (s Struct) TypeArgsSuffix() string {
+	return s.TypeParamsUse
+}
+
+func (s Struct) QualifiedType(pkg string) string {
+	return pkg + "." + s.Name + s.TypeArgsSuffix()
+}
+
 func (s Struct) RelationsFieldsTypeName() string {
 	return lowerFirst(s.Name) + "RelationsFields"
 }
@@ -698,6 +713,26 @@ normalized:
 	return pkgPath, typeName, true
 }
 
+func (f Field) relationTargetTypeArgs() string {
+	goType := f.processGenericType(strings.TrimSpace(f.GoType))
+	for {
+		switch {
+		case strings.HasPrefix(goType, "*"):
+			goType = strings.TrimPrefix(goType, "*")
+		case strings.HasPrefix(goType, "[]"):
+			goType = strings.TrimPrefix(goType, "[]")
+		default:
+			goto normalized
+		}
+	}
+
+normalized:
+	if idx := strings.Index(goType, "["); idx >= 0 {
+		return goType[idx:]
+	}
+	return ""
+}
+
 func (g *Generator) findStruct(pkgPath, typeName string) *Struct {
 	for _, file := range g.Files {
 		for i := range file.Structs {
@@ -716,17 +751,17 @@ func (rf RelationField) InitExpr() string {
 		return fmt.Sprintf("%s{}.WithName(%s)", rf.BaseType, pathExpr)
 	}
 	if rf.IsSlice {
-		return fmt.Sprintf("%s(%s, depth-1)", rf.Target.NewSliceRelationFuncName(), pathExpr)
+		return fmt.Sprintf("%s%s(%s, depth-1)", rf.Target.NewSliceRelationFuncName(), rf.WrapperType, pathExpr)
 	}
-	return fmt.Sprintf("%s(%s, depth-1)", rf.Target.NewStructRelationFuncName(), pathExpr)
+	return fmt.Sprintf("%s%s(%s, depth-1)", rf.Target.NewStructRelationFuncName(), rf.WrapperType, pathExpr)
 }
 
 func (rf RelationField) TypeExpr() string {
 	if rf.Reusable && rf.Target != nil && len(rf.Target.RelationFields) > 0 {
 		if rf.IsSlice {
-			return "*" + rf.Target.SliceRelationTypeName()
+			return "*" + rf.Target.SliceRelationTypeName() + rf.WrapperType
 		}
-		return "*" + rf.Target.StructRelationTypeName()
+		return "*" + rf.Target.StructRelationTypeName() + rf.WrapperType
 	}
 	return rf.BaseType
 }
@@ -767,7 +802,7 @@ func (f *File) buildRelationFields(s Struct) []RelationField {
 		fields = append(fields, RelationField{
 			Name:        field.Name,
 			BaseType:    relationType,
-			WrapperType: relationType,
+			WrapperType: field.relationTargetTypeArgs(),
 			Target:      target,
 			IsSlice:     isSlice,
 			Reusable:    reusable,
@@ -956,6 +991,11 @@ func (p *File) processStructType(typeSpec *ast.TypeSpec, data *ast.StructType, p
 		Name: typeSpec.Name.Name,
 	}
 
+	if typeSpec.TypeParams != nil {
+		s.TypeParamsDecl = p.typeParamsDecl(typeSpec.TypeParams)
+		s.TypeParamsUse = p.typeParamsUse(typeSpec.TypeParams)
+	}
+
 	for _, field := range data.Fields.List {
 		// Handle anonymous embedding first
 		if len(field.Names) == 0 {
@@ -986,6 +1026,45 @@ func (p *File) processStructType(typeSpec *ast.TypeSpec, data *ast.StructType, p
 	}
 
 	return s
+}
+
+func (p *File) typeParamsDecl(fields *ast.FieldList) string {
+	if fields == nil || len(fields.List) == 0 {
+		return ""
+	}
+
+	var params []string
+	for _, field := range fields.List {
+		constraint := exprString(field.Type)
+		for _, name := range field.Names {
+			params = append(params, fmt.Sprintf("%s %s", name.Name, constraint))
+		}
+	}
+
+	return "[" + strings.Join(params, ", ") + "]"
+}
+
+func (p *File) typeParamsUse(fields *ast.FieldList) string {
+	if fields == nil || len(fields.List) == 0 {
+		return ""
+	}
+
+	var params []string
+	for _, field := range fields.List {
+		for _, name := range field.Names {
+			params = append(params, name.Name)
+		}
+	}
+
+	return "[" + strings.Join(params, ", ") + "]"
+}
+
+func exprString(expr ast.Expr) string {
+	var buf bytes.Buffer
+	if err := printer.Fprint(&buf, token.NewFileSet(), expr); err != nil {
+		return ""
+	}
+	return buf.String()
 }
 
 // parseFieldType extracts the type string from an AST field type expression

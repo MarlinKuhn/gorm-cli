@@ -49,24 +49,24 @@ func (e {{$IfaceName}}Impl[T]) {{.Name}}({{.ParamsString}}) ({{.ResultString}}) 
 
 {{range .Structs}}
 {{if .HasRelationFields}}
-type {{.RelationsFieldsTypeName}} struct {
+type {{.RelationsFieldsTypeName}}{{.TypeParamsSuffix}} struct {
 	{{range .RelationFields -}}
 	{{.Name}} {{.TypeExpr}}
 	{{end}}
 }
 
-type {{.StructRelationTypeName}} struct {
-	field.Struct[{{$.Package}}.{{.Name}}]
-	{{.RelationsFieldsTypeName}}
+type {{.StructRelationTypeName}}{{.TypeParamsSuffix}} struct {
+	field.Struct[{{.QualifiedType $.Package}}]
+	{{.RelationsFieldsTypeName}}{{.TypeArgsSuffix}}
 }
 
-type {{.SliceRelationTypeName}} struct {
-	field.Slice[{{$.Package}}.{{.Name}}]
-	{{.RelationsFieldsTypeName}}
+type {{.SliceRelationTypeName}}{{.TypeParamsSuffix}} struct {
+	field.Slice[{{.QualifiedType $.Package}}]
+	{{.RelationsFieldsTypeName}}{{.TypeArgsSuffix}}
 }
 
-func {{.NewRelationsFieldsFuncName}}(prefix string, depth int) {{.RelationsFieldsTypeName}} {
-	return {{.RelationsFieldsTypeName}}{
+func {{.NewRelationsFieldsFuncName}}{{.TypeParamsSuffix}}(prefix string, depth int) {{.RelationsFieldsTypeName}}{{.TypeArgsSuffix}} {
+	return {{.RelationsFieldsTypeName}}{{.TypeArgsSuffix}}{
 		{{range .RelationFields -}}
 		{{.Name}}: {{.InitExpr}},
 		{{end -}}
@@ -75,36 +75,36 @@ func {{.NewRelationsFieldsFuncName}}(prefix string, depth int) {{.RelationsField
 {{end}}
 
 {{if .HasRelationFields}}
-func {{.NewStructRelationFuncName}}(prefix string, depth int) *{{.StructRelationTypeName}} {
-	rel := &{{.StructRelationTypeName}}{
-		field.Struct[{{$.Package}}.{{.Name}}]{}.WithName(prefix),
-		{{.RelationsFieldsTypeName}}{},
+func {{.NewStructRelationFuncName}}{{.TypeParamsSuffix}}(prefix string, depth int) *{{.StructRelationTypeName}}{{.TypeArgsSuffix}} {
+	rel := &{{.StructRelationTypeName}}{{.TypeArgsSuffix}}{
+		field.Struct[{{.QualifiedType $.Package}}]{}.WithName(prefix),
+		{{.RelationsFieldsTypeName}}{{.TypeArgsSuffix}}{},
 	}
 	if depth <= 0 {
 		return rel
 	}
-	rel.{{.RelationsFieldsTypeName}} = {{.NewRelationsFieldsFuncName}}(prefix, depth)
+	rel.{{.RelationsFieldsTypeName}} = {{.NewRelationsFieldsFuncName}}{{.TypeArgsSuffix}}(prefix, depth)
 	return rel
 }
 
-func {{.NewSliceRelationFuncName}}(prefix string, depth int) *{{.SliceRelationTypeName}} {
-	rel := &{{.SliceRelationTypeName}}{
-		field.Slice[{{$.Package}}.{{.Name}}]{}.WithName(prefix),
-		{{.RelationsFieldsTypeName}}{},
+func {{.NewSliceRelationFuncName}}{{.TypeParamsSuffix}}(prefix string, depth int) *{{.SliceRelationTypeName}}{{.TypeArgsSuffix}} {
+	rel := &{{.SliceRelationTypeName}}{{.TypeArgsSuffix}}{
+		field.Slice[{{.QualifiedType $.Package}}]{}.WithName(prefix),
+		{{.RelationsFieldsTypeName}}{{.TypeArgsSuffix}}{},
 	}
 	if depth <= 0 {
 		return rel
 	}
-	rel.{{.RelationsFieldsTypeName}} = {{.NewRelationsFieldsFuncName}}(prefix, depth)
+	rel.{{.RelationsFieldsTypeName}} = {{.NewRelationsFieldsFuncName}}{{.TypeArgsSuffix}}(prefix, depth)
 	return rel
 }
 {{else}}
-func {{.NewStructRelationFuncName}}(prefix string, depth int) field.Struct[{{$.Package}}.{{.Name}}] {
-	return field.Struct[{{$.Package}}.{{.Name}}]{}.WithName(prefix)
+func {{.NewStructRelationFuncName}}{{.TypeParamsSuffix}}(prefix string, depth int) field.Struct[{{.QualifiedType $.Package}}] {
+	return field.Struct[{{.QualifiedType $.Package}}]{}.WithName(prefix)
 }
 
-func {{.NewSliceRelationFuncName}}(prefix string, depth int) field.Slice[{{$.Package}}.{{.Name}}] {
-	return field.Slice[{{$.Package}}.{{.Name}}]{}.WithName(prefix)
+func {{.NewSliceRelationFuncName}}{{.TypeParamsSuffix}}(prefix string, depth int) field.Slice[{{.QualifiedType $.Package}}] {
+	return field.Slice[{{.QualifiedType $.Package}}]{}.WithName(prefix)
 }
 {{end}}
 
