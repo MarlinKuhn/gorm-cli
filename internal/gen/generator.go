@@ -28,7 +28,7 @@ type (
 	Generator struct {
 		Typed   bool
 		Files   map[string]*File
-		outPath string
+		OutPath string
 	}
 	File struct {
 		ToPackage         string
@@ -149,7 +149,7 @@ func (g *Generator) Gen() error {
 
 	var tasks []generateTask
 	for _, file := range g.Files {
-		outPath := g.outPath
+		outPath := g.OutPath
 		for i := len(filesWithCfg) - 1; i >= 0; i-- {
 			prefixPth := filesWithCfg[i]
 			curFile := g.Files[filesWithCfg[i]]

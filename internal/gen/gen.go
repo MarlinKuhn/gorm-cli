@@ -19,7 +19,7 @@ func New() *cobra.Command {
 			g := Generator{
 				Typed:   typed,
 				Files:   map[string]*File{},
-				outPath: output,
+				OutPath: output,
 			}
 
 			err := g.Process(input)

@@ -40,7 +40,7 @@ func TestGeneratorWithQueryInterface(t *testing.T) {
 
 	outputDir := filepath.Join(t.TempDir(), "output")
 
-	g := &Generator{Files: map[string]*File{}, outPath: outputDir}
+	g := &Generator{Files: map[string]*File{}, OutPath: outputDir}
 
 	if err := g.Process(inputPath); err != nil {
 		t.Fatalf("Process error: %v", err)
@@ -112,7 +112,7 @@ type Entity interface {
 	}
 
 	runGen := func(file string) error {
-		g := &Generator{Files: map[string]*File{}, outPath: filepath.Join(filepath.Dir(file), "out")}
+		g := &Generator{Files: map[string]*File{}, OutPath: filepath.Join(filepath.Dir(file), "out")}
 		if err := g.Process(file); err != nil {
 			return err
 		}
@@ -226,7 +226,7 @@ type Node[T any] struct {
 	}
 
 	outputDir := filepath.Join(dir, "out")
-	g := &Generator{Files: map[string]*File{}, outPath: outputDir}
+	g := &Generator{Files: map[string]*File{}, OutPath: outputDir}
 
 	if err := g.Process(inputPath); err != nil {
 		t.Fatalf("Process error: %v", err)
