@@ -23,6 +23,10 @@ func (b Bytes) Column() clause.Column { return b.column }
 func (b Bytes) WithColumn(name string) Bytes {
 	column := b.column
 	column.Name = name
+	if column.Table == "" {
+		column.Table = clause.CurrentTable
+	}
+
 	return Bytes{column: column}
 }
 
