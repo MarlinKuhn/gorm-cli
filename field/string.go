@@ -47,7 +47,7 @@ func (s String) Eq(value string) clause.Expression {
 }
 
 // EqExpr creates an equality comparison expression (field = expression).
-func (s String) EqExpr(expr clause.Expression) clause.Expression {
+func (s String) EqExpr(expr any) clause.Expression {
 	return clause.Eq{Column: s.column, Value: expr}
 }
 
@@ -57,7 +57,7 @@ func (s String) Neq(value string) clause.Expression {
 }
 
 // NeqExpr creates a not equal comparison expression (field != expression).
-func (s String) NeqExpr(expr clause.Expression) clause.Expression {
+func (s String) NeqExpr(expr any) clause.Expression {
 	return clause.Neq{Column: s.column, Value: expr}
 }
 
@@ -67,7 +67,7 @@ func (s String) Gt(value string) clause.Expression {
 }
 
 // GtExpr creates a greater than comparison expression (field > expression).
-func (s String) GtExpr(expr clause.Expression) clause.Expression {
+func (s String) GtExpr(expr any) clause.Expression {
 	return clause.Gt{Column: s.column, Value: expr}
 }
 
@@ -77,7 +77,7 @@ func (s String) Gte(value string) clause.Expression {
 }
 
 // GteExpr creates a greater than or equal comparison expression (field >= expression).
-func (s String) GteExpr(expr clause.Expression) clause.Expression {
+func (s String) GteExpr(expr any) clause.Expression {
 	return clause.Gte{Column: s.column, Value: expr}
 }
 
@@ -87,7 +87,7 @@ func (s String) Lt(value string) clause.Expression {
 }
 
 // LtExpr creates a less than comparison expression (field < expression).
-func (s String) LtExpr(expr clause.Expression) clause.Expression {
+func (s String) LtExpr(expr any) clause.Expression {
 	return clause.Lt{Column: s.column, Value: expr}
 }
 
@@ -97,7 +97,7 @@ func (s String) Lte(value string) clause.Expression {
 }
 
 // LteExpr creates a less than or equal comparison expression (field <= expression).
-func (s String) LteExpr(expr clause.Expression) clause.Expression {
+func (s String) LteExpr(expr any) clause.Expression {
 	return clause.Lte{Column: s.column, Value: expr}
 }
 
@@ -167,7 +167,7 @@ func (s String) Set(val string) clause.Assignment {
 }
 
 // SetExpr creates an assignment expression for UPDATE operations (field = expression).
-func (s String) SetExpr(expr clause.Expression) clause.Assignment {
+func (s String) SetExpr(expr any) clause.Assignment {
 	return clause.Assignment{Column: s.column, Value: expr}
 }
 

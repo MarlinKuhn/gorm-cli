@@ -62,7 +62,7 @@ func (b Bool) Eq(value bool) clause.Expression {
 //	isEnabled := field.Bool{column: clause.Column{Name: "is_enabled"}}
 //	// Generate: WHERE is_active = is_enabled
 //	condition := isActive.EqExpr(isEnabled)
-func (b Bool) EqExpr(expr clause.Expression) clause.Expression {
+func (b Bool) EqExpr(expr any) clause.Expression {
 	return clause.Eq{Column: b.column, Value: expr}
 }
 
@@ -75,7 +75,7 @@ func (b Bool) EqExpr(expr clause.Expression) clause.Expression {
 //	isEnabled := field.Bool{column: clause.Column{Name: "is_enabled"}}
 //	// Generate: WHERE is_active != is_enabled
 //	condition := isActive.NeqExpr(isEnabled)
-func (b Bool) NeqExpr(expr clause.Expression) clause.Expression {
+func (b Bool) NeqExpr(expr any) clause.Expression {
 	return clause.Neq{Column: b.column, Value: expr}
 }
 
@@ -126,7 +126,7 @@ func (b Bool) Set(val bool) clause.Assignment {
 //	isEnabled := field.Bool{column: clause.Column{Name: "is_enabled"}}
 //	// Generate: SET is_active = is_enabled
 //	assignment := isActive.SetExpr(isEnabled)
-func (b Bool) SetExpr(expr clause.Expression) clause.Assignment {
+func (b Bool) SetExpr(expr any) clause.Assignment {
 	return clause.Assignment{Column: b.column, Value: expr}
 }
 
@@ -141,7 +141,7 @@ func (b Bool) SetExpr(expr clause.Expression) clause.Assignment {
 //	isEnabled := field.Bool{column: clause.Column{Name: "is_enabled"}}
 //	// Generate: WHERE is_active AND is_enabled
 //	condition := isActive.AndExpr(isEnabled)
-func (b Bool) AndExpr(expr clause.Expression) AssignerExpression {
+func (b Bool) AndExpr(expr any) AssignerExpression {
 	return colOpExpr{col: b.column, sql: "? AND ?", vars: []any{b.column, expr}}
 }
 
@@ -154,7 +154,7 @@ func (b Bool) AndExpr(expr clause.Expression) AssignerExpression {
 //	isEnabled := field.Bool{column: clause.Column{Name: "is_enabled"}}
 //	// Generate: WHERE is_active OR is_enabled
 //	condition := isActive.OrExpr(isEnabled)
-func (b Bool) OrExpr(expr clause.Expression) AssignerExpression {
+func (b Bool) OrExpr(expr any) AssignerExpression {
 	return colOpExpr{col: b.column, sql: "? OR ?", vars: []any{b.column, expr}}
 }
 
@@ -191,7 +191,7 @@ func (b Bool) Xor(value bool) AssignerExpression {
 //	isEnabled := field.Bool{column: clause.Column{Name: "is_enabled"}}
 //	// Generate: WHERE is_active XOR is_enabled
 //	condition := isActive.XorExpr(isEnabled)
-func (b Bool) XorExpr(expr clause.Expression) AssignerExpression {
+func (b Bool) XorExpr(expr any) AssignerExpression {
 	return colOpExpr{col: b.column, sql: "? XOR ?", vars: []any{b.column, expr}}
 }
 

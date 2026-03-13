@@ -58,7 +58,7 @@ func (f Field[T]) Eq(value T) clause.Expression {
 //	field2 := field.Field[T]{column: clause.Column{Name: "field2"}}
 //	// Generate: WHERE field1 = field2
 //	condition := field1.EqExpr(field2)
-func (f Field[T]) EqExpr(expr clause.Expression) clause.Expression {
+func (f Field[T]) EqExpr(expr any) clause.Expression {
 	return clause.Eq{Column: f.column, Value: expr}
 }
 
@@ -83,7 +83,7 @@ func (f Field[T]) Neq(value T) clause.Expression {
 //	field2 := field.Field[T]{column: clause.Column{Name: "field2"}}
 //	// Generate: WHERE field1 != field2
 //	condition := field1.NeqExpr(field2)
-func (f Field[T]) NeqExpr(expr clause.Expression) clause.Expression {
+func (f Field[T]) NeqExpr(expr any) clause.Expression {
 	return clause.Neq{Column: f.column, Value: expr}
 }
 
@@ -132,7 +132,7 @@ func (f Field[T]) Set(value T) clause.Assignment {
 //	field2 := field.Field[T]{column: clause.Column{Name: "field2"}}
 //	// Generate: SET field1 = field2
 //	assignment := field1.SetExpr(field2)
-func (f Field[T]) SetExpr(expr clause.Expression) clause.Assignment {
+func (f Field[T]) SetExpr(expr any) clause.Assignment {
 	return clause.Assignment{Column: f.column, Value: expr}
 }
 

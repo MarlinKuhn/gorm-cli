@@ -49,7 +49,7 @@ func (n Number[T]) Eq(value T) clause.Expression {
 }
 
 // EqExpr creates an equality comparison expression (field = expression).
-func (n Number[T]) EqExpr(expr clause.Expression) clause.Expression {
+func (n Number[T]) EqExpr(expr any) clause.Expression {
 	return clause.Eq{Column: n.column, Value: expr}
 }
 
@@ -59,7 +59,7 @@ func (n Number[T]) Neq(value T) clause.Expression {
 }
 
 // NeqExpr creates a not equal comparison expression (field != expression).
-func (n Number[T]) NeqExpr(expr clause.Expression) clause.Expression {
+func (n Number[T]) NeqExpr(expr any) clause.Expression {
 	return clause.Neq{Column: n.column, Value: expr}
 }
 
@@ -69,7 +69,7 @@ func (n Number[T]) Gt(value T) clause.Expression {
 }
 
 // GtExpr creates a greater than comparison expression (field > expression).
-func (n Number[T]) GtExpr(expr clause.Expression) clause.Expression {
+func (n Number[T]) GtExpr(expr any) clause.Expression {
 	return clause.Gt{Column: n.column, Value: expr}
 }
 
@@ -79,7 +79,7 @@ func (n Number[T]) Gte(value T) clause.Expression {
 }
 
 // GteExpr creates a greater than or equal comparison expression (field >= expression).
-func (n Number[T]) GteExpr(expr clause.Expression) clause.Expression {
+func (n Number[T]) GteExpr(expr any) clause.Expression {
 	return clause.Gte{Column: n.column, Value: expr}
 }
 
@@ -89,7 +89,7 @@ func (n Number[T]) Lt(value T) clause.Expression {
 }
 
 // LtExpr creates a less than comparison expression (field < expression).
-func (n Number[T]) LtExpr(expr clause.Expression) clause.Expression {
+func (n Number[T]) LtExpr(expr any) clause.Expression {
 	return clause.Lt{Column: n.column, Value: expr}
 }
 
@@ -99,7 +99,7 @@ func (n Number[T]) Lte(value T) clause.Expression {
 }
 
 // LteExpr creates a less than or equal comparison expression (field <= expression).
-func (n Number[T]) LteExpr(expr clause.Expression) clause.Expression {
+func (n Number[T]) LteExpr(expr any) clause.Expression {
 	return clause.Lte{Column: n.column, Value: expr}
 }
 
@@ -147,7 +147,7 @@ func (n Number[T]) Set(val T) clause.Assignment {
 }
 
 // SetExpr creates an assignment expression for UPDATE operations (field = expression).
-func (n Number[T]) SetExpr(expr clause.Expression) clause.Assignment {
+func (n Number[T]) SetExpr(expr any) clause.Assignment {
 	return clause.Assignment{Column: n.column, Value: expr}
 }
 

@@ -47,7 +47,7 @@ func (b Bytes) Eq(value []byte) clause.Expression {
 }
 
 // EqExpr creates an equality comparison expression (field = expression).
-func (b Bytes) EqExpr(expr clause.Expression) clause.Expression {
+func (b Bytes) EqExpr(expr any) clause.Expression {
 	return clause.Eq{Column: b.column, Value: expr}
 }
 
@@ -57,7 +57,7 @@ func (b Bytes) Neq(value []byte) clause.Expression {
 }
 
 // NeqExpr creates a not equal comparison expression (field != expression).
-func (b Bytes) NeqExpr(expr clause.Expression) clause.Expression {
+func (b Bytes) NeqExpr(expr any) clause.Expression {
 	return clause.Neq{Column: b.column, Value: expr}
 }
 
@@ -97,7 +97,7 @@ func (b Bytes) Set(val []byte) clause.Assignment {
 }
 
 // SetExpr creates an assignment expression for UPDATE operations (field = expression).
-func (b Bytes) SetExpr(expr clause.Expression) clause.Assignment {
+func (b Bytes) SetExpr(expr any) clause.Assignment {
 	return clause.Assignment{Column: b.column, Value: expr}
 }
 
