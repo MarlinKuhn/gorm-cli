@@ -21,6 +21,9 @@ func (f Field[T]) Column() clause.Column { return f.column }
 func (f Field[T]) WithColumn(name string) Field[T] {
 	column := f.column
 	column.Name = name
+	if column.Table == "" {
+		column.Table = clause.CurrentTable
+	}
 	return Field[T]{column: column}
 }
 

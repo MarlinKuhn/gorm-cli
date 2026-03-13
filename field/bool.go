@@ -23,6 +23,9 @@ func (b Bool) Column() clause.Column { return b.column }
 func (b Bool) WithColumn(name string) Bool {
 	column := b.column
 	column.Name = name
+	if column.Table == "" {
+		column.Table = clause.CurrentTable
+	}
 	return Bool{column: column}
 }
 

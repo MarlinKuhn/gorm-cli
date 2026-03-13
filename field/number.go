@@ -25,6 +25,9 @@ func (n Number[T]) Column() clause.Column { return n.column }
 func (n Number[T]) WithColumn(name string) Number[T] {
 	column := n.column
 	column.Name = name
+	if column.Table == "" {
+		column.Table = clause.CurrentTable
+	}
 	return Number[T]{column: column}
 }
 

@@ -26,7 +26,6 @@ func (b Bytes) WithColumn(name string) Bytes {
 	if column.Table == "" {
 		column.Table = clause.CurrentTable
 	}
-
 	return Bytes{column: column}
 }
 

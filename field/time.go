@@ -25,6 +25,9 @@ func (t Time) Column() clause.Column { return t.column }
 func (t Time) WithColumn(name string) Time {
 	column := t.column
 	column.Name = name
+	if column.Table == "" {
+		column.Table = clause.CurrentTable
+	}
 	return Time{column: column}
 }
 
