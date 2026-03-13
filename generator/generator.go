@@ -1012,9 +1012,9 @@ func (p *File) processStructType(typeSpec *ast.TypeSpec, data *ast.StructType, p
 	s := Struct{
 		Name: typeSpec.Name.Name,
 	}
-	addField := func(field Field) {
+	mergeField := func(field Field) {
 		for i := range s.Fields {
-			if s.Fields[i].Name == field.Name {
+			if s.Fields[i].Name == field.Name || s.Fields[i].DBName == field.DBName {
 				s.Fields[i] = field
 				return
 			}
@@ -1030,7 +1030,7 @@ func (p *File) processStructType(typeSpec *ast.TypeSpec, data *ast.StructType, p
 	for _, field := range data.Fields.List {
 		// Handle anonymous embedding first
 		if len(field.Names) == 0 {
-			if p.handleAnonymousEmbedding(field, pkgName, &s) {
+			if p.handleAnonymousEmbedding(field, pkgName, mergeField) {
 				continue
 			}
 		}
@@ -1043,7 +1043,7 @@ func (p *File) processStructType(typeSpec *ast.TypeSpec, data *ast.StructType, p
 					fieldTag, _ = strconv.Unquote(field.Tag.Value)
 				}
 
-				addField(Field{
+				mergeField(Field{
 					Name:        n.Name,
 					DBName:      generateDBName(n.Name, fieldTag),
 					GoType:      p.parseFieldType(field.Type, pkgName, true),
@@ -1192,11 +1192,13 @@ func (p *File) getImport(path string) *Import {
 }
 
 // handleAnonymousEmbedding processes anonymous embedded fields and returns true if handled
-func (p *File) handleAnonymousEmbedding(field *ast.Field, pkgName string, s *Struct) bool {
+func (p *File) handleAnonymousEmbedding(field *ast.Field, pkgName string, mergeField func(Field)) bool {
 	// Helper function to add fields from embedded struct
 	addEmbeddedFields := func(structType *ast.StructType, typeName, embeddedPkgName string) bool {
 		sub := p.processStructType(&ast.TypeSpec{Name: &ast.Ident{Name: typeName}}, structType, embeddedPkgName)
-		s.Fields = append(s.Fields, sub.Fields...)
+		for _, field := range sub.Fields {
+			mergeField(field)
+		}
 		return true
 	}
 

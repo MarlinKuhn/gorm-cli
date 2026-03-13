@@ -372,6 +372,101 @@ type User struct {
 	}
 }
 
+func TestEmbeddedStructShadowedFieldsStayUnique(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module temp.test\n\ngo 1.21\n"), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+
+	src := `package sample
+
+type companyDefaults struct {
+	Company Company
+}
+
+type financeDefaults struct {
+	companyDefaults
+	RecipientAddress string ` + "`gorm:\"column:recipient_address\"`" + `
+	HeadNote         string ` + "`gorm:\"column:head_note\"`" + `
+}
+
+type Estimate struct {
+	financeDefaults
+	RecipientAddress *string ` + "`gorm:\"column:recipient_address\"`" + `
+	HeadNote         string ` + "`gorm:\"column:head_note\"`" + `
+	Company          Company
+}
+
+type Company struct {
+	ID uint
+}
+`
+	inputPath := filepath.Join(dir, "sample.go")
+	if err := os.WriteFile(inputPath, []byte(src), 0o644); err != nil {
+		t.Fatalf("write sample.go: %v", err)
+	}
+
+	g := &Generator{Files: map[string]*File{}, OutPath: filepath.Join(dir, "out")}
+	if err := g.Process(inputPath); err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	var estimateFile *File
+	var estimateStruct *Struct
+	for _, file := range g.Files {
+		for i := range file.Structs {
+			if file.Structs[i].Name == "Estimate" {
+				estimateFile = file
+				estimateStruct = &file.Structs[i]
+				break
+			}
+		}
+	}
+
+	if estimateStruct == nil || estimateFile == nil {
+		t.Fatalf("failed to find parsed Estimate struct")
+	}
+
+	nameCounts := map[string]int{}
+	dbNameCounts := map[string]int{}
+	for _, f := range estimateStruct.Fields {
+		nameCounts[f.Name]++
+		dbNameCounts[f.DBName]++
+	}
+
+	for key, count := range map[string]int{
+		"RecipientAddress": nameCounts["RecipientAddress"],
+		"HeadNote":         nameCounts["HeadNote"],
+		"Company":          nameCounts["Company"],
+	} {
+		if count != 1 {
+			t.Fatalf("expected field %s exactly once, got %d", key, count)
+		}
+	}
+
+	for key, count := range map[string]int{
+		"recipient_address": dbNameCounts["recipient_address"],
+		"head_note":         dbNameCounts["head_note"],
+		"company":           dbNameCounts["company"],
+	} {
+		if count != 1 {
+			t.Fatalf("expected column %s exactly once, got %d", key, count)
+		}
+	}
+
+	estimateStruct.RelationFields = estimateFile.buildRelationFields(*estimateStruct)
+	companyRelations := 0
+	for _, rel := range estimateStruct.RelationFields {
+		if rel.Name == "Company" {
+			companyRelations++
+		}
+	}
+	if companyRelations != 1 {
+		t.Fatalf("expected Company relation exactly once, got %d", companyRelations)
+	}
+}
+
 func TestGenericCustomValueTypeUsesFieldWrapper(t *testing.T) {
 	dir := t.TempDir()
 
