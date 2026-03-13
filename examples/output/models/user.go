@@ -98,8 +98,8 @@ var User = struct {
 	Role       field.String
 	IsAdult    field.Bool
 	Profile    examples.JSON
-	AwardTypes field.Struct[datatypes.JSONSlice[int]]
-	TagTypes   field.Struct[datatypes.JSONSlice[models.UserTagType]]
+	AwardTypes field.Field[datatypes.JSONSlice[int]]
+	TagTypes   field.Field[datatypes.JSONSlice[models.UserTagType]]
 	Tag        field.Field[models.UserTagType]
 	Enum       field.Field[enum.Enum]
 	Enum2      field.Field[enum2.Enum]
@@ -126,8 +126,8 @@ var User = struct {
 	Role:       field.String{}.WithColumn("role"),
 	IsAdult:    field.Bool{}.WithColumn("is_adult"),
 	Profile:    examples.JSON{}.WithColumn("profile"),
-	AwardTypes: field.Struct[datatypes.JSONSlice[int]]{}.WithName("AwardTypes"),
-	TagTypes:   field.Struct[datatypes.JSONSlice[models.UserTagType]]{}.WithName("TagTypes"),
+	AwardTypes: field.Field[datatypes.JSONSlice[int]]{}.WithColumn("award_types"),
+	TagTypes:   field.Field[datatypes.JSONSlice[models.UserTagType]]{}.WithColumn("tag_types"),
 	Tag:        field.Field[models.UserTagType]{}.WithColumn("tag"),
 	Enum:       field.Field[enum.Enum]{}.WithColumn("enum"),
 	Enum2:      field.Field[enum2.Enum]{}.WithColumn("enum2"),

@@ -35,6 +35,10 @@ func setupMySQLTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestMySQL_JSONEqual_ProfileVIP(t *testing.T) {
+	if os.Getenv("MYSQL_DSN") == "" {
+		t.Skip("MYSQL_DSN not set, skipping MySQL test")
+	}
+
 	db := setupMySQLTestDB(t)
 
 	// Insert a user with JSON profile

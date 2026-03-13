@@ -276,10 +276,14 @@ func TestEmbeddedStructFieldsAndRelationsAcrossFiles(t *testing.T) {
 
 	baseSrc := `package sample
 
+type Meta struct {
+	Code string
+	Pets []Pet
+}
+
 type Audit struct {
-	Code    string
+	Meta
 	Company Company
-	Pets    []Pet
 }
 
 type Company struct {
@@ -298,6 +302,7 @@ type Pet struct {
 
 type User struct {
 	Audit
+	Company Company
 	Name string
 }
 `
@@ -336,12 +341,22 @@ type User struct {
 
 	wantFields := []Field{
 		{Name: "Code", DBName: "code", GoType: "string"},
-		{Name: "Company", DBName: "company", GoType: "temp.test.Company"},
 		{Name: "Pets", DBName: "pets", GoType: "[]temp.test.Pet"},
+		{Name: "Company", DBName: "company", GoType: "temp.test.Company"},
 		{Name: "Name", DBName: "name", GoType: "string"},
 	}
 	if !reflect.DeepEqual(gotFields, wantFields) {
 		t.Fatalf("expected embedded fields %+v, got %+v", wantFields, gotFields)
+	}
+
+	companyCount := 0
+	for _, f := range userStruct.Fields {
+		if f.Name == "Company" {
+			companyCount++
+		}
+	}
+	if companyCount != 1 {
+		t.Fatalf("expected embedded shadowed field to appear once, got %d entries", companyCount)
 	}
 
 	userStruct.RelationFields = userFile.buildRelationFields(*userStruct)
@@ -351,7 +366,7 @@ type User struct {
 		gotRelations = append(gotRelations, rel.Name)
 	}
 
-	wantRelations := []string{"Company", "Pets"}
+	wantRelations := []string{"Pets", "Company"}
 	if !reflect.DeepEqual(gotRelations, wantRelations) {
 		t.Fatalf("expected embedded relations %v, got %v", wantRelations, gotRelations)
 	}

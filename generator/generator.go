@@ -1012,6 +1012,15 @@ func (p *File) processStructType(typeSpec *ast.TypeSpec, data *ast.StructType, p
 	s := Struct{
 		Name: typeSpec.Name.Name,
 	}
+	addField := func(field Field) {
+		for i := range s.Fields {
+			if s.Fields[i].Name == field.Name {
+				s.Fields[i] = field
+				return
+			}
+		}
+		s.Fields = append(s.Fields, field)
+	}
 
 	if typeSpec.TypeParams != nil {
 		s.TypeParamsDecl = p.typeParamsDecl(typeSpec.TypeParams)
@@ -1034,7 +1043,7 @@ func (p *File) processStructType(typeSpec *ast.TypeSpec, data *ast.StructType, p
 					fieldTag, _ = strconv.Unquote(field.Tag.Value)
 				}
 
-				s.Fields = append(s.Fields, Field{
+				addField(Field{
 					Name:        n.Name,
 					DBName:      generateDBName(n.Name, fieldTag),
 					GoType:      p.parseFieldType(field.Type, pkgName, true),
