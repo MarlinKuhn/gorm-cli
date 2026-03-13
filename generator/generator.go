@@ -1216,6 +1216,12 @@ func (p *File) handleAnonymousEmbedding(field *ast.Field, pkgName string, s *Str
 				}
 			}
 		}
+		if p.PackagePath != "" {
+			st, err := loadNamedStructType(p.goModDir, p.PackagePath, t.Name)
+			if err == nil && st != nil {
+				return addEmbeddedFields(st, t.Name, "")
+			}
+		}
 
 	case *ast.SelectorExpr:
 		// External package type embedding (e.g., pkg.BaseStruct or *pkg.BaseStruct)

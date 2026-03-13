@@ -267,6 +267,96 @@ type Node[T any] struct {
 	}
 }
 
+func TestEmbeddedStructFieldsAndRelationsAcrossFiles(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module temp.test\n\ngo 1.21\n"), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+
+	baseSrc := `package sample
+
+type Audit struct {
+	Code    string
+	Company Company
+	Pets    []Pet
+}
+
+type Company struct {
+	ID uint
+}
+
+type Pet struct {
+	ID uint
+}
+`
+	if err := os.WriteFile(filepath.Join(dir, "base.go"), []byte(baseSrc), 0o644); err != nil {
+		t.Fatalf("write base.go: %v", err)
+	}
+
+	userSrc := `package sample
+
+type User struct {
+	Audit
+	Name string
+}
+`
+	if err := os.WriteFile(filepath.Join(dir, "user.go"), []byte(userSrc), 0o644); err != nil {
+		t.Fatalf("write user.go: %v", err)
+	}
+
+	g := &Generator{Files: map[string]*File{}, OutPath: filepath.Join(dir, "out")}
+	if err := g.Process(dir); err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	var userFile *File
+	var userStruct *Struct
+	for _, file := range g.Files {
+		for i := range file.Structs {
+			if file.Structs[i].Name == "User" {
+				userFile = file
+				userStruct = &file.Structs[i]
+				break
+			}
+		}
+		if userStruct != nil {
+			break
+		}
+	}
+
+	if userStruct == nil || userFile == nil {
+		t.Fatalf("failed to find parsed User struct")
+	}
+
+	var gotFields []Field
+	for _, f := range userStruct.Fields {
+		gotFields = append(gotFields, Field{Name: f.Name, DBName: f.DBName, GoType: f.GoType})
+	}
+
+	wantFields := []Field{
+		{Name: "Code", DBName: "code", GoType: "string"},
+		{Name: "Company", DBName: "company", GoType: "temp.test.Company"},
+		{Name: "Pets", DBName: "pets", GoType: "[]temp.test.Pet"},
+		{Name: "Name", DBName: "name", GoType: "string"},
+	}
+	if !reflect.DeepEqual(gotFields, wantFields) {
+		t.Fatalf("expected embedded fields %+v, got %+v", wantFields, gotFields)
+	}
+
+	userStruct.RelationFields = userFile.buildRelationFields(*userStruct)
+
+	gotRelations := make([]string, 0, len(userStruct.RelationFields))
+	for _, rel := range userStruct.RelationFields {
+		gotRelations = append(gotRelations, rel.Name)
+	}
+
+	wantRelations := []string{"Company", "Pets"}
+	if !reflect.DeepEqual(gotRelations, wantRelations) {
+		t.Fatalf("expected embedded relations %v, got %v", wantRelations, gotRelations)
+	}
+}
+
 func TestGenericCustomValueTypeUsesFieldWrapper(t *testing.T) {
 	dir := t.TempDir()
 
