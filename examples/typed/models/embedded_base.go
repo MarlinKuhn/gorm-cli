@@ -7,6 +7,7 @@ import (
 
 	"gorm.io/cli/gorm/examples/models"
 	"gorm.io/cli/gorm/field"
+	"gorm.io/gorm/clause"
 )
 
 type embeddedMetaRelationsFields struct {
@@ -55,13 +56,19 @@ func newEmbeddedMetaSliceRelation(prefix string, depth int) *embeddedMetaSliceRe
 
 var EmbeddedMetaRelations = newEmbeddedMetaRelationsFields("", 4)
 
-var EmbeddedMeta = struct {
+type genEmbeddedMeta struct {
 	Code field.String
 	Pets field.Slice[models.Pet]
-}{
-	Code: field.String{}.WithColumn("code"),
-	Pets: field.Slice[models.Pet]{}.WithName("Pets"),
 }
+
+func (g genEmbeddedMeta) WithTable(table string) genEmbeddedMeta {
+	return genEmbeddedMeta{
+		Code: field.String{}.WithColumn("code").WithTable(table),
+		Pets: field.Slice[models.Pet]{}.WithName("Pets"),
+	}
+}
+
+var EmbeddedMeta = genEmbeddedMeta{}.WithTable(clause.CurrentTable)
 
 type embeddedAuditRelationsFields struct {
 	Pets    *petSliceRelation
@@ -111,12 +118,18 @@ func newEmbeddedAuditSliceRelation(prefix string, depth int) *embeddedAuditSlice
 
 var EmbeddedAuditRelations = newEmbeddedAuditRelationsFields("", 4)
 
-var EmbeddedAudit = struct {
+type genEmbeddedAudit struct {
 	Code    field.String
 	Pets    field.Slice[models.Pet]
 	Company field.Struct[models.Company]
-}{
-	Code:    field.String{}.WithColumn("code"),
-	Pets:    field.Slice[models.Pet]{}.WithName("Pets"),
-	Company: field.Struct[models.Company]{}.WithName("Company"),
 }
+
+func (g genEmbeddedAudit) WithTable(table string) genEmbeddedAudit {
+	return genEmbeddedAudit{
+		Code:    field.String{}.WithColumn("code").WithTable(table),
+		Pets:    field.Slice[models.Pet]{}.WithName("Pets"),
+		Company: field.Struct[models.Company]{}.WithName("Company"),
+	}
+}
+
+var EmbeddedAudit = genEmbeddedAudit{}.WithTable(clause.CurrentTable)

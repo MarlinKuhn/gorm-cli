@@ -629,7 +629,7 @@ func (f Field) Value() string {
 	}
 
 	// Regular field
-	return fmt.Sprintf("%s{}.WithColumn(%q)", fieldType, f.DBName)
+	return fmt.Sprintf("%s{}.WithColumn(%q).WithTable(table)", fieldType, f.DBName)
 }
 
 func (s Struct) HasRelations() bool {

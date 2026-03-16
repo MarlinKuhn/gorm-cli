@@ -112,15 +112,21 @@ func {{.NewSliceRelationFuncName}}{{.TypeParamsSuffix}}(prefix string, depth int
 var {{.RelationsVarName}} = {{.NewRelationsFieldsFuncName}}("", {{$.MaxRelationDepth}})
 {{end}}
 
-var {{.Name}} = struct {
+type gen{{.Name}} struct {
 	{{range .Fields -}}
 	{{.Name}} {{.Type}}
 	{{end}}
-}{
-	{{range .Fields -}}
-	{{.Name}}: {{.Value}},
-	{{end -}}
 }
+
+func (g gen{{.Name}}) WithTable(table string) gen{{.Name}} {
+	return gen{{.Name}}{
+		{{range .Fields -}}
+		{{.Name}}: {{.Value}},
+		{{end -}}
+	}
+}
+
+var {{.Name}} = gen{{.Name}}{}.WithTable(clause.CurrentTable)
 {{end}}
 `
 )

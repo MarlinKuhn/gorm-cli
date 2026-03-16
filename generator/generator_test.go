@@ -28,12 +28,12 @@ func TestLoadNamedTypes(t *testing.T) {
 }
 
 func TestGeneratorWithQueryInterface(t *testing.T) {
-	inputPath, err := filepath.Abs("../../examples/query.go")
+	inputPath, err := filepath.Abs("../examples/query.go")
 	if err != nil {
 		t.Fatalf("failed to get absolute path: %v", err)
 	}
 
-	goldenPath, err := filepath.Abs("../../examples/output/query.go")
+	goldenPath, err := filepath.Abs("../examples/output/query.go")
 	if err != nil {
 		t.Fatalf("failed to get absolute output path: %v", err)
 	}
@@ -134,7 +134,7 @@ type Entity interface {
 
 func TestProcessStructType(t *testing.T) {
 	fileset := token.NewFileSet()
-	file, err := parser.ParseFile(fileset, "../../examples/models/user.go", nil, parser.AllErrors)
+	file, err := parser.ParseFile(fileset, "../examples/models/user.go", nil, parser.AllErrors)
 	if err != nil {
 		t.Fatalf("failed to parse file: %v", err)
 	}

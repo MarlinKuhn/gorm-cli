@@ -5,6 +5,7 @@ package whitelist
 import (
 	"gorm.io/cli/gorm/examples/filters/whitelist"
 	"gorm.io/cli/gorm/field"
+	"gorm.io/gorm/clause"
 )
 
 func newS1StructRelation(prefix string, depth int) field.Struct[whitelist.S1] {
@@ -15,10 +16,16 @@ func newS1SliceRelation(prefix string, depth int) field.Slice[whitelist.S1] {
 	return field.Slice[whitelist.S1]{}.WithName(prefix)
 }
 
-var S1 = struct {
+type genS1 struct {
 	ID   field.Number[int]
 	Name field.String
-}{
-	ID:   field.Number[int]{}.WithColumn("id"),
-	Name: field.String{}.WithColumn("name"),
 }
+
+func (g genS1) WithTable(table string) genS1 {
+	return genS1{
+		ID:   field.Number[int]{}.WithColumn("id").WithTable(table),
+		Name: field.String{}.WithColumn("name").WithTable(table),
+	}
+}
+
+var S1 = genS1{}.WithTable(clause.CurrentTable)

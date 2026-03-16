@@ -39,7 +39,7 @@ func readAllGeneratedGoFiles(t *testing.T, dir string) string {
 }
 
 func TestFilters_Whitelist(t *testing.T) {
-	inputDir, err := filepath.Abs("../../examples/filters/whitelist")
+	inputDir, err := filepath.Abs("../examples/filters/whitelist")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,16 +65,16 @@ func TestFilters_Whitelist(t *testing.T) {
 		t.Fatalf("expected I2 to be filtered out by whitelist")
 	}
 	// S1 var present; S2 not present
-	if !strings.Contains(content, "var S1 = struct") {
+	if !strings.Contains(content, "var S1 = genS1{}.WithTable(clause.CurrentTable)") {
 		t.Fatalf("expected S1 helper struct to be generated")
 	}
-	if strings.Contains(content, "var S2 = struct") {
+	if strings.Contains(content, "var S2 = genS2{}.WithTable(clause.CurrentTable)") {
 		t.Fatalf("expected S2 to be filtered out by whitelist")
 	}
 }
 
 func TestFilters_Blacklist(t *testing.T) {
-	inputDir, err := filepath.Abs("../../examples/filters/blacklist")
+	inputDir, err := filepath.Abs("../examples/filters/blacklist")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,16 +98,16 @@ func TestFilters_Blacklist(t *testing.T) {
 		t.Fatalf("expected I1 to be generated")
 	}
 	// S2 excluded; S1 included
-	if strings.Contains(content, "var S2 = struct") {
+	if strings.Contains(content, "var S2 = genS2{}.WithTable(clause.CurrentTable)") {
 		t.Fatalf("expected S2 to be excluded by blacklist")
 	}
-	if !strings.Contains(content, "var S1 = struct") {
+	if !strings.Contains(content, "var S1 = genS1{}.WithTable(clause.CurrentTable)") {
 		t.Fatalf("expected S1 to be generated")
 	}
 }
 
 func TestFilters_TwoLevel(t *testing.T) {
-	inputDir, err := filepath.Abs("../../examples/filters/twolevel")
+	inputDir, err := filepath.Abs("../examples/filters/twolevel")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestFilters_TwoLevel(t *testing.T) {
 	if !strings.Contains(rIface, "func I1[") || !strings.Contains(rIface, "func I2[") || strings.Contains(rIface, "func I3[") {
 		t.Fatalf("root: expected I1, I2 to be generated, I3 not generated")
 	}
-	if !strings.Contains(rModels, "var S1 = struct") || !strings.Contains(rModels, "var S2 = struct") || strings.Contains(rModels, "var S3 = struct") {
+	if !strings.Contains(rModels, "var S1 = genS1{}.WithTable(clause.CurrentTable)") || !strings.Contains(rModels, "var S2 = genS2{}.WithTable(clause.CurrentTable)") || strings.Contains(rModels, "var S3 = genS3{}.WithTable(clause.CurrentTable)") {
 		t.Fatalf("root: expected S1, S2 to be generated, S3 not generated")
 	}
 
@@ -147,16 +147,16 @@ func TestFilters_TwoLevel(t *testing.T) {
 	if !strings.Contains(nIface, "func I1[") {
 		t.Fatalf("nested: expected I1 to be generated")
 	}
-	if strings.Contains(nModels, "var S2 = struct") || strings.Contains(nModels, "var S3 = struct") {
+	if strings.Contains(nModels, "var S2 = genS2{}.WithTable(clause.CurrentTable)") || strings.Contains(nModels, "var S3 = genS3{}.WithTable(clause.CurrentTable)") {
 		t.Fatalf("nested: S2 and S3 should be excluded by parent+child config")
 	}
-	if !strings.Contains(nModels, "var S1 = struct") {
+	if !strings.Contains(nModels, "var S1 = genS1{}.WithTable(clause.CurrentTable)") {
 		t.Fatalf("nested: expected S1 to be generated")
 	}
 }
 
 func TestFilters_PatternInclude(t *testing.T) {
-	inputDir, err := filepath.Abs("../../examples/filters/pattern")
+	inputDir, err := filepath.Abs("../examples/filters/pattern")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,10 +215,10 @@ type private struct {
 	}
 
 	content := readAllGeneratedGoFiles(t, out)
-	if !strings.Contains(content, "var Public = struct") {
+	if !strings.Contains(content, "var Public = genPublic{}.WithTable(clause.CurrentTable)") {
 		t.Fatalf("expected Public to be generated")
 	}
-	if strings.Contains(content, "var private = struct") {
+	if strings.Contains(content, "var private = genPrivate{}.WithTable(clause.CurrentTable)") {
 		t.Fatalf("expected private struct to be skipped")
 	}
 }

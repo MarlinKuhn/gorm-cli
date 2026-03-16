@@ -190,10 +190,16 @@ func newParamsSliceRelation(prefix string, depth int) field.Slice[examples.Param
 	return field.Slice[examples.Params]{}.WithName(prefix)
 }
 
-var Params = struct {
+type genParams struct {
 	Name field.String
 	Age  field.Number[int]
-}{
-	Name: field.String{}.WithColumn("name"),
-	Age:  field.Number[int]{}.WithColumn("age"),
 }
+
+func (g genParams) WithTable(table string) genParams {
+	return genParams{
+		Name: field.String{}.WithColumn("name").WithTable(table),
+		Age:  field.Number[int]{}.WithColumn("age").WithTable(table),
+	}
+}
+
+var Params = genParams{}.WithTable(clause.CurrentTable)

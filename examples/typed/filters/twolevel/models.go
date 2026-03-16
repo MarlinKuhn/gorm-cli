@@ -5,6 +5,7 @@ package twolevel
 import (
 	"gorm.io/cli/gorm/examples/filters/twolevel"
 	"gorm.io/cli/gorm/field"
+	"gorm.io/gorm/clause"
 )
 
 func newS1StructRelation(prefix string, depth int) field.Struct[twolevel.S1] {
@@ -15,11 +16,17 @@ func newS1SliceRelation(prefix string, depth int) field.Slice[twolevel.S1] {
 	return field.Slice[twolevel.S1]{}.WithName(prefix)
 }
 
-var S1 = struct {
+type genS1 struct {
 	ID field.Number[int]
-}{
-	ID: field.Number[int]{}.WithColumn("id"),
 }
+
+func (g genS1) WithTable(table string) genS1 {
+	return genS1{
+		ID: field.Number[int]{}.WithColumn("id").WithTable(table),
+	}
+}
+
+var S1 = genS1{}.WithTable(clause.CurrentTable)
 
 func newS2StructRelation(prefix string, depth int) field.Struct[twolevel.S2] {
 	return field.Struct[twolevel.S2]{}.WithName(prefix)
@@ -29,8 +36,14 @@ func newS2SliceRelation(prefix string, depth int) field.Slice[twolevel.S2] {
 	return field.Slice[twolevel.S2]{}.WithName(prefix)
 }
 
-var S2 = struct {
+type genS2 struct {
 	ID field.Number[int]
-}{
-	ID: field.Number[int]{}.WithColumn("id"),
 }
+
+func (g genS2) WithTable(table string) genS2 {
+	return genS2{
+		ID: field.Number[int]{}.WithColumn("id").WithTable(table),
+	}
+}
+
+var S2 = genS2{}.WithTable(clause.CurrentTable)

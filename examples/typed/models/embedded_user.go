@@ -7,6 +7,7 @@ import (
 
 	"gorm.io/cli/gorm/examples/models"
 	"gorm.io/cli/gorm/field"
+	"gorm.io/gorm/clause"
 )
 
 type embeddedUserRelationsFields struct {
@@ -57,14 +58,20 @@ func newEmbeddedUserSliceRelation(prefix string, depth int) *embeddedUserSliceRe
 
 var EmbeddedUserRelations = newEmbeddedUserRelationsFields("", 4)
 
-var EmbeddedUser = struct {
+type genEmbeddedUser struct {
 	Code    field.String
 	Pets    field.Slice[models.Pet]
 	Company field.Struct[models.Company]
 	Name    field.String
-}{
-	Code:    field.String{}.WithColumn("code"),
-	Pets:    field.Slice[models.Pet]{}.WithName("Pets"),
-	Company: field.Struct[models.Company]{}.WithName("Company"),
-	Name:    field.String{}.WithColumn("name"),
 }
+
+func (g genEmbeddedUser) WithTable(table string) genEmbeddedUser {
+	return genEmbeddedUser{
+		Code:    field.String{}.WithColumn("code").WithTable(table),
+		Pets:    field.Slice[models.Pet]{}.WithName("Pets"),
+		Company: field.Struct[models.Company]{}.WithName("Company"),
+		Name:    field.String{}.WithColumn("name").WithTable(table),
+	}
+}
+
+var EmbeddedUser = genEmbeddedUser{}.WithTable(clause.CurrentTable)

@@ -13,6 +13,7 @@ import (
 	"gorm.io/cli/gorm/field"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type userRelationsFields struct {
@@ -75,7 +76,7 @@ func newUserSliceRelation(prefix string, depth int) *userSliceRelation {
 
 var UserRelations = newUserRelationsFields("", 4)
 
-var User = struct {
+type genUser struct {
 	ID         field.Number[uint]
 	CreatedAt  field.Time
 	UpdatedAt  field.Time
@@ -103,35 +104,41 @@ var User = struct {
 	Tag        field.Field[models.UserTagType]
 	Enum       field.Field[enum.Enum]
 	Enum2      field.Field[enum2.Enum]
-}{
-	ID:         field.Number[uint]{}.WithColumn("id"),
-	CreatedAt:  field.Time{}.WithColumn("created_at"),
-	UpdatedAt:  field.Time{}.WithColumn("updated_at"),
-	DeletedAt:  field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at"),
-	Name:       field.String{}.WithColumn("name"),
-	Age:        field.Number[int]{}.WithColumn("age"),
-	Birthday:   field.Time{}.WithColumn("birthday"),
-	Score:      field.Field[sql.NullInt64]{}.WithColumn("score"),
-	LastLogin:  field.Time{}.WithColumn("last_login"),
-	Account:    field.Struct[models.Account]{}.WithName("Account"),
-	Pets:       field.Slice[models.Pet]{}.WithName("Pets"),
-	Toys:       field.Slice[models.Toy]{}.WithName("Toys"),
-	CompanyID:  field.Number[int]{}.WithColumn("company_id"),
-	Company:    field.Struct[models.Company]{}.WithName("Company"),
-	ManagerID:  field.Number[uint]{}.WithColumn("manager_id"),
-	Manager:    field.Struct[models.User]{}.WithName("Manager"),
-	Team:       field.Slice[models.User]{}.WithName("Team"),
-	Languages:  field.Slice[models.Language]{}.WithName("Languages"),
-	Friends:    field.Slice[models.User]{}.WithName("Friends"),
-	Role:       field.String{}.WithColumn("role"),
-	IsAdult:    field.Bool{}.WithColumn("is_adult"),
-	Profile:    examples.JSON{}.WithColumn("profile"),
-	AwardTypes: field.Field[datatypes.JSONSlice[int]]{}.WithColumn("award_types"),
-	TagTypes:   field.Field[datatypes.JSONSlice[models.UserTagType]]{}.WithColumn("tag_types"),
-	Tag:        field.Field[models.UserTagType]{}.WithColumn("tag"),
-	Enum:       field.Field[enum.Enum]{}.WithColumn("enum"),
-	Enum2:      field.Field[enum2.Enum]{}.WithColumn("enum2"),
 }
+
+func (g genUser) WithTable(table string) genUser {
+	return genUser{
+		ID:         field.Number[uint]{}.WithColumn("id").WithTable(table),
+		CreatedAt:  field.Time{}.WithColumn("created_at").WithTable(table),
+		UpdatedAt:  field.Time{}.WithColumn("updated_at").WithTable(table),
+		DeletedAt:  field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at").WithTable(table),
+		Name:       field.String{}.WithColumn("name").WithTable(table),
+		Age:        field.Number[int]{}.WithColumn("age").WithTable(table),
+		Birthday:   field.Time{}.WithColumn("birthday").WithTable(table),
+		Score:      field.Field[sql.NullInt64]{}.WithColumn("score").WithTable(table),
+		LastLogin:  field.Time{}.WithColumn("last_login").WithTable(table),
+		Account:    field.Struct[models.Account]{}.WithName("Account"),
+		Pets:       field.Slice[models.Pet]{}.WithName("Pets"),
+		Toys:       field.Slice[models.Toy]{}.WithName("Toys"),
+		CompanyID:  field.Number[int]{}.WithColumn("company_id").WithTable(table),
+		Company:    field.Struct[models.Company]{}.WithName("Company"),
+		ManagerID:  field.Number[uint]{}.WithColumn("manager_id").WithTable(table),
+		Manager:    field.Struct[models.User]{}.WithName("Manager"),
+		Team:       field.Slice[models.User]{}.WithName("Team"),
+		Languages:  field.Slice[models.Language]{}.WithName("Languages"),
+		Friends:    field.Slice[models.User]{}.WithName("Friends"),
+		Role:       field.String{}.WithColumn("role").WithTable(table),
+		IsAdult:    field.Bool{}.WithColumn("is_adult").WithTable(table),
+		Profile:    examples.JSON{}.WithColumn("profile").WithTable(table),
+		AwardTypes: field.Field[datatypes.JSONSlice[int]]{}.WithColumn("award_types").WithTable(table),
+		TagTypes:   field.Field[datatypes.JSONSlice[models.UserTagType]]{}.WithColumn("tag_types").WithTable(table),
+		Tag:        field.Field[models.UserTagType]{}.WithColumn("tag").WithTable(table),
+		Enum:       field.Field[enum.Enum]{}.WithColumn("enum").WithTable(table),
+		Enum2:      field.Field[enum2.Enum]{}.WithColumn("enum2").WithTable(table),
+	}
+}
+
+var User = genUser{}.WithTable(clause.CurrentTable)
 
 func newAccountStructRelation(prefix string, depth int) field.Struct[models.Account] {
 	return field.Struct[models.Account]{}.WithName(prefix)
@@ -141,7 +148,7 @@ func newAccountSliceRelation(prefix string, depth int) field.Slice[models.Accoun
 	return field.Slice[models.Account]{}.WithName(prefix)
 }
 
-var Account = struct {
+type genAccount struct {
 	ID           field.Number[uint]
 	CreatedAt    field.Time
 	UpdatedAt    field.Time
@@ -150,16 +157,22 @@ var Account = struct {
 	Number       field.String
 	RewardPoints field.Field[sql.NullInt64]
 	LastUsedAt   field.Time
-}{
-	ID:           field.Number[uint]{}.WithColumn("id"),
-	CreatedAt:    field.Time{}.WithColumn("created_at"),
-	UpdatedAt:    field.Time{}.WithColumn("updated_at"),
-	DeletedAt:    field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at"),
-	UserID:       field.Field[sql.NullInt64]{}.WithColumn("user_id"),
-	Number:       field.String{}.WithColumn("number"),
-	RewardPoints: field.Field[sql.NullInt64]{}.WithColumn("reward_points"),
-	LastUsedAt:   field.Time{}.WithColumn("last_used_at"),
 }
+
+func (g genAccount) WithTable(table string) genAccount {
+	return genAccount{
+		ID:           field.Number[uint]{}.WithColumn("id").WithTable(table),
+		CreatedAt:    field.Time{}.WithColumn("created_at").WithTable(table),
+		UpdatedAt:    field.Time{}.WithColumn("updated_at").WithTable(table),
+		DeletedAt:    field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at").WithTable(table),
+		UserID:       field.Field[sql.NullInt64]{}.WithColumn("user_id").WithTable(table),
+		Number:       field.String{}.WithColumn("number").WithTable(table),
+		RewardPoints: field.Field[sql.NullInt64]{}.WithColumn("reward_points").WithTable(table),
+		LastUsedAt:   field.Time{}.WithColumn("last_used_at").WithTable(table),
+	}
+}
+
+var Account = genAccount{}.WithTable(clause.CurrentTable)
 
 type petRelationsFields struct {
 	Toy field.Struct[models.Toy]
@@ -207,7 +220,7 @@ func newPetSliceRelation(prefix string, depth int) *petSliceRelation {
 
 var PetRelations = newPetRelationsFields("", 4)
 
-var Pet = struct {
+type genPet struct {
 	ID        field.Number[uint]
 	CreatedAt field.Time
 	UpdatedAt field.Time
@@ -215,15 +228,21 @@ var Pet = struct {
 	UserID    field.Number[uint]
 	Name      field.String
 	Toy       field.Struct[models.Toy]
-}{
-	ID:        field.Number[uint]{}.WithColumn("id"),
-	CreatedAt: field.Time{}.WithColumn("created_at"),
-	UpdatedAt: field.Time{}.WithColumn("updated_at"),
-	DeletedAt: field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at"),
-	UserID:    field.Number[uint]{}.WithColumn("user_id"),
-	Name:      field.String{}.WithColumn("name"),
-	Toy:       field.Struct[models.Toy]{}.WithName("Toy"),
 }
+
+func (g genPet) WithTable(table string) genPet {
+	return genPet{
+		ID:        field.Number[uint]{}.WithColumn("id").WithTable(table),
+		CreatedAt: field.Time{}.WithColumn("created_at").WithTable(table),
+		UpdatedAt: field.Time{}.WithColumn("updated_at").WithTable(table),
+		DeletedAt: field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at").WithTable(table),
+		UserID:    field.Number[uint]{}.WithColumn("user_id").WithTable(table),
+		Name:      field.String{}.WithColumn("name").WithTable(table),
+		Toy:       field.Struct[models.Toy]{}.WithName("Toy"),
+	}
+}
+
+var Pet = genPet{}.WithTable(clause.CurrentTable)
 
 func newToyStructRelation(prefix string, depth int) field.Struct[models.Toy] {
 	return field.Struct[models.Toy]{}.WithName(prefix)
@@ -233,7 +252,7 @@ func newToySliceRelation(prefix string, depth int) field.Slice[models.Toy] {
 	return field.Slice[models.Toy]{}.WithName(prefix)
 }
 
-var Toy = struct {
+type genToy struct {
 	ID        field.Number[uint]
 	CreatedAt field.Time
 	UpdatedAt field.Time
@@ -241,15 +260,21 @@ var Toy = struct {
 	Name      field.String
 	OwnerID   field.Number[uint]
 	OwnerType field.String
-}{
-	ID:        field.Number[uint]{}.WithColumn("id"),
-	CreatedAt: field.Time{}.WithColumn("created_at"),
-	UpdatedAt: field.Time{}.WithColumn("updated_at"),
-	DeletedAt: field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at"),
-	Name:      field.String{}.WithColumn("name"),
-	OwnerID:   field.Number[uint]{}.WithColumn("owner_id"),
-	OwnerType: field.String{}.WithColumn("owner_type"),
 }
+
+func (g genToy) WithTable(table string) genToy {
+	return genToy{
+		ID:        field.Number[uint]{}.WithColumn("id").WithTable(table),
+		CreatedAt: field.Time{}.WithColumn("created_at").WithTable(table),
+		UpdatedAt: field.Time{}.WithColumn("updated_at").WithTable(table),
+		DeletedAt: field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at").WithTable(table),
+		Name:      field.String{}.WithColumn("name").WithTable(table),
+		OwnerID:   field.Number[uint]{}.WithColumn("owner_id").WithTable(table),
+		OwnerType: field.String{}.WithColumn("owner_type").WithTable(table),
+	}
+}
+
+var Toy = genToy{}.WithTable(clause.CurrentTable)
 
 func newCompanyStructRelation(prefix string, depth int) field.Struct[models.Company] {
 	return field.Struct[models.Company]{}.WithName(prefix)
@@ -259,13 +284,19 @@ func newCompanySliceRelation(prefix string, depth int) field.Slice[models.Compan
 	return field.Slice[models.Company]{}.WithName(prefix)
 }
 
-var Company = struct {
+type genCompany struct {
 	ID   field.Number[int]
 	Name field.String
-}{
-	ID:   field.Number[int]{}.WithColumn("id"),
-	Name: field.String{}.WithColumn("name"),
 }
+
+func (g genCompany) WithTable(table string) genCompany {
+	return genCompany{
+		ID:   field.Number[int]{}.WithColumn("id").WithTable(table),
+		Name: field.String{}.WithColumn("name").WithTable(table),
+	}
+}
+
+var Company = genCompany{}.WithTable(clause.CurrentTable)
 
 func newLanguageStructRelation(prefix string, depth int) field.Struct[models.Language] {
 	return field.Struct[models.Language]{}.WithName(prefix)
@@ -275,13 +306,19 @@ func newLanguageSliceRelation(prefix string, depth int) field.Slice[models.Langu
 	return field.Slice[models.Language]{}.WithName(prefix)
 }
 
-var Language = struct {
+type genLanguage struct {
 	Code field.String
 	Name field.String
-}{
-	Code: field.String{}.WithColumn("code"),
-	Name: field.String{}.WithColumn("name"),
 }
+
+func (g genLanguage) WithTable(table string) genLanguage {
+	return genLanguage{
+		Code: field.String{}.WithColumn("code").WithTable(table),
+		Name: field.String{}.WithColumn("name").WithTable(table),
+	}
+}
+
+var Language = genLanguage{}.WithTable(clause.CurrentTable)
 
 func newCreditCardStructRelation(prefix string, depth int) field.Struct[models.CreditCard] {
 	return field.Struct[models.CreditCard]{}.WithName(prefix)
@@ -291,16 +328,22 @@ func newCreditCardSliceRelation(prefix string, depth int) field.Slice[models.Cre
 	return field.Slice[models.CreditCard]{}.WithName(prefix)
 }
 
-var CreditCard = struct {
+type genCreditCard struct {
 	ID        field.Number[uint]
 	CreatedAt field.Time
 	UpdatedAt field.Time
 	DeletedAt field.Field[gorm.DeletedAt]
 	Number    field.String
-}{
-	ID:        field.Number[uint]{}.WithColumn("id"),
-	CreatedAt: field.Time{}.WithColumn("created_at"),
-	UpdatedAt: field.Time{}.WithColumn("updated_at"),
-	DeletedAt: field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at"),
-	Number:    field.String{}.WithColumn("number"),
 }
+
+func (g genCreditCard) WithTable(table string) genCreditCard {
+	return genCreditCard{
+		ID:        field.Number[uint]{}.WithColumn("id").WithTable(table),
+		CreatedAt: field.Time{}.WithColumn("created_at").WithTable(table),
+		UpdatedAt: field.Time{}.WithColumn("updated_at").WithTable(table),
+		DeletedAt: field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at").WithTable(table),
+		Number:    field.String{}.WithColumn("number").WithTable(table),
+	}
+}
+
+var CreditCard = genCreditCard{}.WithTable(clause.CurrentTable)
