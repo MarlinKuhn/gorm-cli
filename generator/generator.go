@@ -859,15 +859,36 @@ func (f Field) resolveRelationTypeFromNamed(pkgPath, typeName, originalBaseType 
 	if typ == nil {
 		return resolvedRelationType{}, false
 	}
-	return f.resolveRelationTypesType(typ, pkgPath, typeName, originalBaseType, isSlice)
+	named, ok := typ.(*types.Named)
+	if !ok {
+		return resolvedRelationType{}, false
+	}
+	if _, ok := named.Underlying().(*types.Struct); ok {
+		return resolvedRelationType{
+			baseType: originalBaseType,
+			pkgPath:  pkgPath,
+			typeName: typeName,
+			isSlice:  isSlice,
+		}, true
+	}
+	return f.resolveRelationAliasUnderlying(named.Underlying(), isSlice)
 }
 
-func (f Field) resolveRelationTypesType(typ types.Type, originalPkgPath, originalTypeName, originalBaseType string, isSlice bool) (resolvedRelationType, bool) {
+func (f Field) resolveRelationAliasUnderlying(typ types.Type, isSlice bool) (resolvedRelationType, bool) {
 	switch t := typ.(type) {
 	case *types.Pointer:
-		return f.resolveRelationTypesType(t.Elem(), originalPkgPath, originalTypeName, originalBaseType, isSlice)
+		return f.resolveRelationAliasTarget(t.Elem(), isSlice)
 	case *types.Slice:
-		return f.resolveRelationTypesType(t.Elem(), originalPkgPath, originalTypeName, originalBaseType, true)
+		return f.resolveRelationAliasTarget(t.Elem(), true)
+	default:
+		return resolvedRelationType{}, false
+	}
+}
+
+func (f Field) resolveRelationAliasTarget(typ types.Type, isSlice bool) (resolvedRelationType, bool) {
+	switch t := typ.(type) {
+	case *types.Pointer:
+		return f.resolveRelationAliasTarget(t.Elem(), isSlice)
 	case *types.Named:
 		if obj := t.Obj(); obj != nil {
 			if _, ok := t.Underlying().(*types.Struct); ok {
@@ -875,22 +896,16 @@ func (f Field) resolveRelationTypesType(typ types.Type, originalPkgPath, origina
 				if obj.Pkg() != nil {
 					pkgPath = obj.Pkg().Path()
 				}
-				baseType := f.file.getImportAliasType(pkgPath + "." + obj.Name())
-				if pkgPath == originalPkgPath && obj.Name() == originalTypeName {
-					baseType = originalBaseType
-				}
 				return resolvedRelationType{
-					baseType: baseType,
+					baseType: f.file.getImportAliasType(pkgPath + "." + obj.Name()),
 					pkgPath:  pkgPath,
 					typeName: obj.Name(),
 					isSlice:  isSlice,
 				}, true
 			}
 		}
-		return f.resolveRelationTypesType(t.Underlying(), originalPkgPath, originalTypeName, originalBaseType, isSlice)
-	default:
-		return resolvedRelationType{}, false
 	}
+	return resolvedRelationType{}, false
 }
 
 func splitRelationTypeName(goType, packagePath, packageName string) (pkgPath, typeName string) {
