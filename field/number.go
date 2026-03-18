@@ -182,6 +182,11 @@ func (n Number[T]) SetExpr(expr any) clause.Assignment {
 
 // Basic SQL expression functions for arithmetic operations
 
+// Chain returns a NumberChain that allows chaining of arithmetic operations on this field. This is useful for building complex expressions that can be used in Select, Where, or Update clauses.
+func (n Number[T]) Chain() NumberChain[T] {
+	return NumberChain[T]{column: n.column}
+}
+
 // Incr creates an increment expression (field + value).
 func (n Number[T]) Incr(value T) AssignerExpression {
 	return colOpExpr{col: n.column, sql: "? + ?", vars: []any{n.column, value}}
