@@ -193,6 +193,29 @@ func shouldSkipFile(filePath string) bool {
 	return err == nil && bytes.Contains(content, []byte(codeGenHint))
 }
 
+func checksumMatchesGeneratedFile(filePath, checksum string) bool {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return false
+	}
+
+	found, ok := extractGeneratedChecksum(content)
+	return ok && found == checksum
+}
+
+func extractGeneratedChecksum(content []byte) (string, bool) {
+	const prefix = "// Source checksum:"
+
+	for _, line := range strings.Split(string(content), "\n") {
+		if after, ok := strings.CutPrefix(line, prefix); ok {
+			checksum := strings.TrimSpace(after)
+			return checksum, checksum != ""
+		}
+	}
+
+	return "", false
+}
+
 // strLit returns the unquoted string if expr is a string literal; otherwise "".
 func strLit(expr ast.Expr) string {
 	if bl, ok := expr.(*ast.BasicLit); ok && bl.Kind == token.STRING {

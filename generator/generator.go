@@ -2,6 +2,8 @@ package generator
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -34,6 +36,7 @@ type (
 		ToPackage         string
 		Package           string
 		PackagePath       string
+		SourceChecksum    string
 		Imports           []Import
 		Interfaces        []Interface
 		Structs           []Struct
@@ -268,6 +271,11 @@ func (g *Generator) Gen() error {
 	for _, task := range tasks {
 		task := task
 		eg.Go(func() error {
+			if checksumMatchesGeneratedFile(task.outPath, task.file.SourceChecksum) {
+				fmt.Printf("Skipping generation for %s; source checksum unchanged.\n", task.outPath)
+				return nil
+			}
+
 			var results bytes.Buffer
 			if err := tmpl.Execute(&results, task.file); err != nil {
 				return fmt.Errorf("failed to render template %v, got error %v", task.file.inputPath, err)
@@ -302,6 +310,11 @@ func (g *Generator) processFile(inputFile, inputRoot string) error {
 		return err
 	}
 
+	sourceBytes, err := os.ReadFile(inputFile)
+	if err != nil {
+		return err
+	}
+
 	if shouldSkipFile(inputFile) {
 		fmt.Printf("Skipping generated file: %s\n", inputFile)
 		return nil
@@ -320,11 +333,12 @@ func (g *Generator) processFile(inputFile, inputRoot string) error {
 	}
 
 	file := &File{
-		Package:   f.Name.Name,
-		inputPath: inputFile,
-		relPath:   relPath,
-		goModDir:  findGoModDir(inputFile),
-		Generator: g,
+		Package:        f.Name.Name,
+		SourceChecksum: checksumBytes(sourceBytes),
+		inputPath:      inputFile,
+		relPath:        relPath,
+		goModDir:       findGoModDir(inputFile),
+		Generator:      g,
 	}
 
 	// Add current package to imports for alias/path resolution and generation needs
@@ -341,6 +355,11 @@ func (g *Generator) processFile(inputFile, inputRoot string) error {
 	// Store every processed file so configs in any file are discoverable
 	g.Files[file.inputPath] = file
 	return nil
+}
+
+func checksumBytes(content []byte) string {
+	sum := sha256.Sum256(content)
+	return hex.EncodeToString(sum[:])
 }
 
 // ImportPath returns formatted import path string for template generation

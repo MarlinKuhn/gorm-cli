@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 	"text/template"
+	"time"
 )
 
 func TestParseTemplate(t *testing.T) {
@@ -77,6 +78,103 @@ func TestGeneratorWithQueryInterface(t *testing.T) {
 	if goldenStr != generatedStr {
 		t.Errorf("generated file differs from golden file\nGOLDEN: %s\nGENERATED: %s\n%s",
 			goldenPath, generatedFile, generatedStr)
+	}
+}
+
+func TestGeneratorEmbedsChecksumAndSkipsUnchangedSource(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module temp.test\n\ngo 1.21\n"), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+
+	inputPath := filepath.Join(dir, "sample.go")
+	source := `package sample
+
+type User struct {
+	ID uint
+}
+`
+	if err := os.WriteFile(inputPath, []byte(source), 0o644); err != nil {
+		t.Fatalf("write sample.go: %v", err)
+	}
+
+	outputDir := filepath.Join(dir, "out")
+	g := &Generator{Files: map[string]*File{}, OutPath: outputDir}
+	if err := g.Process(inputPath); err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+	if err := g.Gen(); err != nil {
+		t.Fatalf("Gen error: %v", err)
+	}
+
+	generatedFile := filepath.Join(outputDir, "sample.go")
+	firstContent, err := os.ReadFile(generatedFile)
+	if err != nil {
+		t.Fatalf("read generated file: %v", err)
+	}
+	if !strings.Contains(string(firstContent), "// Source checksum: ") {
+		t.Fatalf("generated file missing source checksum:\n%s", string(firstContent))
+	}
+
+	firstInfo, err := os.Stat(generatedFile)
+	if err != nil {
+		t.Fatalf("stat generated file: %v", err)
+	}
+
+	time.Sleep(1100 * time.Millisecond)
+
+	g = &Generator{Files: map[string]*File{}, OutPath: outputDir}
+	if err := g.Process(inputPath); err != nil {
+		t.Fatalf("Process error on second run: %v", err)
+	}
+	if err := g.Gen(); err != nil {
+		t.Fatalf("Gen error on second run: %v", err)
+	}
+
+	secondInfo, err := os.Stat(generatedFile)
+	if err != nil {
+		t.Fatalf("stat generated file after second run: %v", err)
+	}
+	if !secondInfo.ModTime().Equal(firstInfo.ModTime()) {
+		t.Fatalf("expected unchanged source to skip rewrite, modtime changed from %v to %v", firstInfo.ModTime(), secondInfo.ModTime())
+	}
+
+	updatedSource := `package sample
+
+type User struct {
+	ID   uint
+	Name string
+}
+`
+	if err := os.WriteFile(inputPath, []byte(updatedSource), 0o644); err != nil {
+		t.Fatalf("update sample.go: %v", err)
+	}
+
+	time.Sleep(1100 * time.Millisecond)
+
+	g = &Generator{Files: map[string]*File{}, OutPath: outputDir}
+	if err := g.Process(inputPath); err != nil {
+		t.Fatalf("Process error on third run: %v", err)
+	}
+	if err := g.Gen(); err != nil {
+		t.Fatalf("Gen error on third run: %v", err)
+	}
+
+	thirdInfo, err := os.Stat(generatedFile)
+	if err != nil {
+		t.Fatalf("stat generated file after third run: %v", err)
+	}
+	if !thirdInfo.ModTime().After(secondInfo.ModTime()) {
+		t.Fatalf("expected changed source to rewrite file, modtime stayed at %v", thirdInfo.ModTime())
+	}
+
+	thirdContent, err := os.ReadFile(generatedFile)
+	if err != nil {
+		t.Fatalf("read generated file after source change: %v", err)
+	}
+	if !strings.Contains(string(thirdContent), "Name field.String") {
+		t.Fatalf("expected regenerated output to include new field:\n%s", string(thirdContent))
 	}
 }
 
