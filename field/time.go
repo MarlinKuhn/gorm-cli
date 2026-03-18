@@ -58,6 +58,9 @@ func (t Time) Eq(value time.Time) clause.Expression {
 
 // EqExpr creates an equality comparison expression (field = expression).
 func (t Time) EqExpr(expr any) clause.Expression {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return clause.Eq{Column: t.column, Value: expr}
 }
 
@@ -68,6 +71,9 @@ func (t Time) Neq(value time.Time) clause.Expression {
 
 // NeqExpr creates a not equal comparison expression (field != expression).
 func (t Time) NeqExpr(expr any) clause.Expression {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return clause.Neq{Column: t.column, Value: expr}
 }
 
@@ -78,6 +84,9 @@ func (t Time) Gt(value time.Time) clause.Expression {
 
 // GtExpr creates a greater than comparison expression (field > expression).
 func (t Time) GtExpr(expr any) clause.Expression {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return clause.Gt{Column: t.column, Value: expr}
 }
 
@@ -88,6 +97,9 @@ func (t Time) Gte(value time.Time) clause.Expression {
 
 // GteExpr creates a greater than or equal comparison expression (field >= expression).
 func (t Time) GteExpr(expr any) clause.Expression {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return clause.Gte{Column: t.column, Value: expr}
 }
 
@@ -98,6 +110,9 @@ func (t Time) Lt(value time.Time) clause.Expression {
 
 // LtExpr creates a less than comparison expression (field < expression).
 func (t Time) LtExpr(expr any) clause.Expression {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return clause.Lt{Column: t.column, Value: expr}
 }
 
@@ -108,6 +123,9 @@ func (t Time) Lte(value time.Time) clause.Expression {
 
 // LteExpr creates a less than or equal comparison expression (field <= expression).
 func (t Time) LteExpr(expr any) clause.Expression {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return clause.Lte{Column: t.column, Value: expr}
 }
 
@@ -156,6 +174,9 @@ func (t Time) Set(val time.Time) clause.Assignment {
 
 // SetExpr creates an assignment expression for UPDATE operations (field = expression).
 func (t Time) SetExpr(expr any) clause.Assignment {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return clause.Assignment{Column: t.column, Value: expr}
 }
 
