@@ -33,19 +33,19 @@ type (
 		OutPath string
 	}
 	File struct {
-		ToPackage         string
-		Package           string
-		PackagePath       string
-		SourceChecksum    string
-		Imports           []Import
-		Interfaces        []Interface
-		Structs           []Struct
-		Config            *genconfig.Config
-		applicableConfigs []*genconfig.Config
-		inputPath         string
-		relPath           string
-		goModDir          string
-		Generator         *Generator
+		ToPackage          string
+		Package            string
+		PackagePath        string
+		GenerationChecksum string
+		Imports            []Import
+		Interfaces         []Interface
+		Structs            []Struct
+		Config             *genconfig.Config
+		applicableConfigs  []*genconfig.Config
+		inputPath          string
+		relPath            string
+		goModDir           string
+		Generator          *Generator
 	}
 	Import struct {
 		Name string
@@ -172,6 +172,7 @@ func (g *Generator) Gen() error {
 
 	var tasks []generateTask
 	for _, file := range g.Files {
+		file.applicableConfigs = nil
 		outPath := g.OutPath
 		for i := len(filesWithCfg) - 1; i >= 0; i-- {
 			prefixPth := filesWithCfg[i]
@@ -260,6 +261,7 @@ func (g *Generator) Gen() error {
 
 		outPath = filepath.Join(outPath, file.relPath)
 		file.ToPackage = filepath.Base(filepath.Dir(outPath))
+		file.GenerationChecksum = generationChecksum(file, g.Typed)
 		tasks = append(tasks, generateTask{
 			file:    file,
 			outPath: outPath,
@@ -271,8 +273,8 @@ func (g *Generator) Gen() error {
 	for _, task := range tasks {
 		task := task
 		eg.Go(func() error {
-			if checksumMatchesGeneratedFile(task.outPath, task.file.SourceChecksum) {
-				fmt.Printf("Skipping generation for %s; source checksum unchanged.\n", task.outPath)
+			if checksumMatchesGeneratedFile(task.outPath, task.file.GenerationChecksum) {
+				fmt.Printf("Skipping generation for %s; generation checksum unchanged.\n", task.outPath)
 				return nil
 			}
 
@@ -310,11 +312,6 @@ func (g *Generator) processFile(inputFile, inputRoot string) error {
 		return err
 	}
 
-	sourceBytes, err := os.ReadFile(inputFile)
-	if err != nil {
-		return err
-	}
-
 	if shouldSkipFile(inputFile) {
 		fmt.Printf("Skipping generated file: %s\n", inputFile)
 		return nil
@@ -333,12 +330,11 @@ func (g *Generator) processFile(inputFile, inputRoot string) error {
 	}
 
 	file := &File{
-		Package:        f.Name.Name,
-		SourceChecksum: checksumBytes(sourceBytes),
-		inputPath:      inputFile,
-		relPath:        relPath,
-		goModDir:       findGoModDir(inputFile),
-		Generator:      g,
+		Package:   f.Name.Name,
+		inputPath: inputFile,
+		relPath:   relPath,
+		goModDir:  findGoModDir(inputFile),
+		Generator: g,
 	}
 
 	// Add current package to imports for alias/path resolution and generation needs

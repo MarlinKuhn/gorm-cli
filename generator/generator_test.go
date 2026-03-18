@@ -113,8 +113,8 @@ type User struct {
 	if err != nil {
 		t.Fatalf("read generated file: %v", err)
 	}
-	if !strings.Contains(string(firstContent), "// Source checksum: ") {
-		t.Fatalf("generated file missing source checksum:\n%s", string(firstContent))
+	if !strings.Contains(string(firstContent), "// Generation checksum: ") {
+		t.Fatalf("generated file missing generation checksum:\n%s", string(firstContent))
 	}
 
 	firstInfo, err := os.Stat(generatedFile)
@@ -175,6 +175,78 @@ type User struct {
 	}
 	if !strings.Contains(string(thirdContent), "Name field.String") {
 		t.Fatalf("expected regenerated output to include new field:\n%s", string(thirdContent))
+	}
+}
+
+func TestGeneratorChecksumIncludesTypedAndConfig(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module temp.test\n\ngo 1.21\n"), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+
+	inputPath := filepath.Join(dir, "sample.go")
+	source := `package sample
+
+import "gorm.io/cli/gorm/genconfig"
+
+var _ = genconfig.Config{
+	FileLevel: false,
+}
+
+type User struct {
+	ID uint
+}
+`
+	if err := os.WriteFile(inputPath, []byte(source), 0o644); err != nil {
+		t.Fatalf("write sample.go: %v", err)
+	}
+
+	outputDir := filepath.Join(dir, "out")
+	run := func(typed bool) time.Time {
+		g := &Generator{Typed: typed, Files: map[string]*File{}, OutPath: outputDir}
+		if err := g.Process(inputPath); err != nil {
+			t.Fatalf("Process error: %v", err)
+		}
+		if err := g.Gen(); err != nil {
+			t.Fatalf("Gen error: %v", err)
+		}
+
+		info, err := os.Stat(filepath.Join(outputDir, "sample.go"))
+		if err != nil {
+			t.Fatalf("stat generated file: %v", err)
+		}
+		return info.ModTime()
+	}
+
+	firstMod := run(true)
+	time.Sleep(1100 * time.Millisecond)
+
+	secondMod := run(false)
+	if !secondMod.After(firstMod) {
+		t.Fatalf("expected typed mode change to invalidate checksum")
+	}
+
+	updatedSource := `package sample
+
+import "gorm.io/cli/gorm/genconfig"
+
+var _ = genconfig.Config{
+	FileLevel: true,
+}
+
+type User struct {
+	ID uint
+}
+`
+	if err := os.WriteFile(inputPath, []byte(updatedSource), 0o644); err != nil {
+		t.Fatalf("update sample.go: %v", err)
+	}
+
+	time.Sleep(1100 * time.Millisecond)
+	thirdMod := run(false)
+	if !thirdMod.After(secondMod) {
+		t.Fatalf("expected config change to invalidate checksum")
 	}
 }
 

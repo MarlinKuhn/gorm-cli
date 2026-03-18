@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "database/sql"
 	_ "database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -16,6 +17,7 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/packages"
+	"gorm.io/cli/gorm/genconfig"
 	_ "gorm.io/gorm"
 	"gorm.io/gorm/schema"
 )
@@ -204,7 +206,7 @@ func checksumMatchesGeneratedFile(filePath, checksum string) bool {
 }
 
 func extractGeneratedChecksum(content []byte) (string, bool) {
-	const prefix = "// Source checksum:"
+	const prefix = "// Generation checksum:"
 
 	for _, line := range strings.Split(string(content), "\n") {
 		if after, ok := strings.CutPrefix(line, prefix); ok {
@@ -214,6 +216,81 @@ func extractGeneratedChecksum(content []byte) (string, bool) {
 	}
 
 	return "", false
+}
+
+func generationChecksum(file *File, typed bool) string {
+	payload := struct {
+		Typed            bool             `json:"typed"`
+		Source           string           `json:"source"`
+		ApplicableConfig []configSnapshot `json:"applicable_config"`
+	}{
+		Typed:            typed,
+		Source:           checksumBytes(mustReadFile(file.inputPath)),
+		ApplicableConfig: snapshotConfigs(file.applicableConfigs),
+	}
+
+	b, _ := json.Marshal(payload)
+	return checksumBytes(b)
+}
+
+type configSnapshot struct {
+	OutPath           string            `json:"out_path"`
+	FieldTypeMap      map[string]string `json:"field_type_map"`
+	FieldNameMap      map[string]string `json:"field_name_map"`
+	FileLevel         bool              `json:"file_level"`
+	IncludeInterfaces []string          `json:"include_interfaces"`
+	ExcludeInterfaces []string          `json:"exclude_interfaces"`
+	IncludeStructs    []string          `json:"include_structs"`
+	ExcludeStructs    []string          `json:"exclude_structs"`
+}
+
+func snapshotConfigs(configs []*genconfig.Config) []configSnapshot {
+	snapshots := make([]configSnapshot, 0, len(configs))
+	for _, cfg := range configs {
+		snapshots = append(snapshots, configSnapshot{
+			OutPath:           cfg.OutPath,
+			FieldTypeMap:      stringifyMap(cfg.FieldTypeMap),
+			FieldNameMap:      stringifyStringMap(cfg.FieldNameMap),
+			FileLevel:         cfg.FileLevel,
+			IncludeInterfaces: stringifySlice(cfg.IncludeInterfaces),
+			ExcludeInterfaces: stringifySlice(cfg.ExcludeInterfaces),
+			IncludeStructs:    stringifySlice(cfg.IncludeStructs),
+			ExcludeStructs:    stringifySlice(cfg.ExcludeStructs),
+		})
+	}
+	return snapshots
+}
+
+func stringifyMap(input map[any]any) map[string]string {
+	out := make(map[string]string, len(input))
+	for k, v := range input {
+		out[fmt.Sprint(k)] = fmt.Sprint(v)
+	}
+	return out
+}
+
+func stringifyStringMap(input map[string]any) map[string]string {
+	out := make(map[string]string, len(input))
+	for k, v := range input {
+		out[k] = fmt.Sprint(v)
+	}
+	return out
+}
+
+func stringifySlice(input []any) []string {
+	out := make([]string, 0, len(input))
+	for _, item := range input {
+		out = append(out, fmt.Sprint(item))
+	}
+	return out
+}
+
+func mustReadFile(filePath string) []byte {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		panic(err)
+	}
+	return content
 }
 
 // strLit returns the unquoted string if expr is a string literal; otherwise "".
