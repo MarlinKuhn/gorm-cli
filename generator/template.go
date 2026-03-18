@@ -72,9 +72,7 @@ func {{.NewRelationsFieldsFuncName}}{{.TypeParamsSuffix}}(prefix string, depth i
 		{{end -}}
 	}
 }
-{{end}}
 
-{{if .HasRelationFields}}
 func {{.NewStructRelationFuncName}}{{.TypeParamsSuffix}}(prefix string, depth int) *{{.StructRelationTypeName}}{{.TypeArgsSuffix}} {
 	rel := &{{.StructRelationTypeName}}{{.TypeArgsSuffix}}{
 		field.Struct[{{.QualifiedType $.Package}}]{}.WithName(prefix),

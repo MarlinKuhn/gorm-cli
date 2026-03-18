@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"go/types"
 	"os"
 	"path"
 	"path/filepath"
@@ -688,51 +689,22 @@ func (s Struct) NewSliceRelationFuncName() string {
 }
 
 func (f Field) relationBaseType() (string, bool, bool) {
-	goType := f.processGenericType(f.GoType)
-	if strings.HasPrefix(goType, "*") {
-		goType = strings.TrimPrefix(goType, "*")
+	resolved, ok := f.resolveRelationType()
+	if !ok {
+		return "", false, false
 	}
-	if strings.HasPrefix(goType, "[]") {
-		return fmt.Sprintf("field.Slice[%s]", strings.TrimPrefix(goType, "[]")), true, true
+	if resolved.isSlice {
+		return fmt.Sprintf("field.Slice[%s]", resolved.baseType), true, true
 	}
-	return fmt.Sprintf("field.Struct[%s]", goType), false, true
+	return fmt.Sprintf("field.Struct[%s]", resolved.baseType), false, true
 }
 
 func (f Field) relationTargetType() (pkgPath, typeName string, ok bool) {
-	goType := strings.TrimSpace(f.GoType)
-	for {
-		switch {
-		case strings.HasPrefix(goType, "*"):
-			goType = strings.TrimPrefix(goType, "*")
-		case strings.HasPrefix(goType, "[]"):
-			goType = strings.TrimPrefix(goType, "[]")
-		default:
-			goto normalized
-		}
+	resolved, ok := f.resolveRelationType()
+	if !ok {
+		return "", "", false
 	}
-
-normalized:
-	if idx := strings.Index(goType, "["); idx >= 0 {
-		goType = goType[:idx]
-	}
-
-	lastDot := strings.LastIndex(goType, ".")
-	if lastDot == -1 {
-		if f.file.PackagePath != "" {
-			return f.file.PackagePath, goType, true
-		}
-		if f.file.Package != "" {
-			return f.file.Package, goType, true
-		}
-		return "", goType, true
-	}
-
-	pkgPath = goType[:lastDot]
-	typeName = goType[lastDot+1:]
-	if !strings.Contains(pkgPath, "/") {
-		pkgPath = f.file.getFullImportPath(pkgPath)
-	}
-	return pkgPath, typeName, true
+	return resolved.pkgPath, resolved.typeName, true
 }
 
 func (f Field) relationTargetTypeArgs() string {
@@ -831,6 +803,112 @@ func (f *File) buildRelationFields(s Struct) []RelationField {
 		})
 	}
 	return fields
+}
+
+type resolvedRelationType struct {
+	baseType string
+	pkgPath  string
+	typeName string
+	isSlice  bool
+}
+
+func (f Field) resolveRelationType() (resolvedRelationType, bool) {
+	return f.resolveRelationTypeFromString(strings.TrimSpace(f.GoType))
+}
+
+func (f Field) resolveRelationTypeFromString(goType string) (resolvedRelationType, bool) {
+	isSlice := false
+	for {
+		switch {
+		case strings.HasPrefix(goType, "*"):
+			goType = strings.TrimPrefix(goType, "*")
+		case strings.HasPrefix(goType, "[]"):
+			isSlice = true
+			goType = strings.TrimPrefix(goType, "[]")
+		default:
+			goto normalized
+		}
+	}
+
+normalized:
+	baseType := f.processGenericType(goType)
+	if idx := strings.Index(goType, "["); idx >= 0 {
+		goType = goType[:idx]
+	}
+
+	pkgPath, typeName := splitRelationTypeName(goType, f.file.PackagePath, f.file.Package)
+	if pkgPath != "" && typeName != "" {
+		if resolved, ok := f.resolveRelationTypeFromNamed(pkgPath, typeName, baseType, isSlice); ok {
+			return resolved, true
+		}
+	}
+
+	if pkgPath == "" || typeName == "" {
+		return resolvedRelationType{}, false
+	}
+	return resolvedRelationType{
+		baseType: baseType,
+		pkgPath:  pkgPath,
+		typeName: typeName,
+		isSlice:  isSlice,
+	}, true
+}
+
+func (f Field) resolveRelationTypeFromNamed(pkgPath, typeName, originalBaseType string, isSlice bool) (resolvedRelationType, bool) {
+	typ := loadNamedType(f.file.goModDir, pkgPath, typeName)
+	if typ == nil {
+		return resolvedRelationType{}, false
+	}
+	return f.resolveRelationTypesType(typ, pkgPath, typeName, originalBaseType, isSlice)
+}
+
+func (f Field) resolveRelationTypesType(typ types.Type, originalPkgPath, originalTypeName, originalBaseType string, isSlice bool) (resolvedRelationType, bool) {
+	switch t := typ.(type) {
+	case *types.Pointer:
+		return f.resolveRelationTypesType(t.Elem(), originalPkgPath, originalTypeName, originalBaseType, isSlice)
+	case *types.Slice:
+		return f.resolveRelationTypesType(t.Elem(), originalPkgPath, originalTypeName, originalBaseType, true)
+	case *types.Named:
+		if obj := t.Obj(); obj != nil {
+			if _, ok := t.Underlying().(*types.Struct); ok {
+				pkgPath := ""
+				if obj.Pkg() != nil {
+					pkgPath = obj.Pkg().Path()
+				}
+				baseType := f.file.getImportAliasType(pkgPath + "." + obj.Name())
+				if pkgPath == originalPkgPath && obj.Name() == originalTypeName {
+					baseType = originalBaseType
+				}
+				return resolvedRelationType{
+					baseType: baseType,
+					pkgPath:  pkgPath,
+					typeName: obj.Name(),
+					isSlice:  isSlice,
+				}, true
+			}
+		}
+		return f.resolveRelationTypesType(t.Underlying(), originalPkgPath, originalTypeName, originalBaseType, isSlice)
+	default:
+		return resolvedRelationType{}, false
+	}
+}
+
+func splitRelationTypeName(goType, packagePath, packageName string) (pkgPath, typeName string) {
+	lastDot := strings.LastIndex(goType, ".")
+	if lastDot == -1 {
+		switch {
+		case packagePath != "":
+			return packagePath, goType
+		case packageName != "":
+			return packageName, goType
+		default:
+			return "", goType
+		}
+	}
+
+	pkgPath = goType[:lastDot]
+	typeName = goType[lastDot+1:]
+	return pkgPath, typeName
 }
 
 // Visit implements ast.Visitor to traverse AST nodes and extract imports, interfaces, and structs
