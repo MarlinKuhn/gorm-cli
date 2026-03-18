@@ -13,6 +13,11 @@ type String struct {
 // Column returns the underlying column for this field
 func (s String) Column() clause.Column { return s.column }
 
+// String returns the string representation of the column for  selecting or debugging purposes. It will return the column name, optionally qualified with the table name if provided.
+func (s String) String() string {
+	return columnToName(s)
+}
+
 // WithColumn creates a new String field with the specified column name.
 // This method allows you to change the column name while keeping other properties.
 //

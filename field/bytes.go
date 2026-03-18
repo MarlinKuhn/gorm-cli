@@ -13,6 +13,11 @@ type Bytes struct {
 // Column returns the underlying column for this field
 func (b Bytes) Column() clause.Column { return b.column }
 
+// String returns the string representation of the column for  selecting or debugging purposes. It will return the column name, optionally qualified with the table name if provided.
+func (b Bytes) String() string {
+	return columnToName(b)
+}
+
 // WithColumn creates a new Bytes field with the specified column name.
 // This method allows you to change the column name while keeping other properties.
 //

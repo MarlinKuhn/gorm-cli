@@ -15,6 +15,11 @@ type Time struct {
 // Column returns the underlying column for this field
 func (t Time) Column() clause.Column { return t.column }
 
+// String returns the string representation of the column for  selecting or debugging purposes. It will return the column name, optionally qualified with the table name if provided.
+func (t Time) String() string {
+	return columnToName(t)
+}
+
 // WithColumn creates a new Time field with the specified column name.
 // This method allows you to change the column name while keeping other properties.
 //

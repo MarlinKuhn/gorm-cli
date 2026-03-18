@@ -15,6 +15,11 @@ type Number[T constraints.Integer | constraints.Float] struct {
 // Column returns the underlying column for this field
 func (n Number[T]) Column() clause.Column { return n.column }
 
+// String returns the string representation of the column for  selecting or debugging purposes. It will return the column name, optionally qualified with the table name if provided.
+func (n Number[T]) String() string {
+	return columnToName(n)
+}
+
 // WithColumn creates a new Number field with the specified column name.
 // This method allows you to change the column name while keeping other properties.
 //

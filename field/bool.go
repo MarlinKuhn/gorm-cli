@@ -13,6 +13,11 @@ type Bool struct {
 // Column returns the underlying column for this field
 func (b Bool) Column() clause.Column { return b.column }
 
+// String returns the string representation of the column for  selecting or debugging purposes. It will return the column name, optionally qualified with the table name if provided.
+func (b Bool) String() string {
+	return columnToName(b)
+}
+
 // WithColumn creates a new Bool field with the specified column name.
 // This method allows you to change the column name while keeping other properties.
 //
@@ -66,6 +71,9 @@ func (b Bool) Eq(value bool) clause.Expression {
 //	// Generate: WHERE is_active = is_enabled
 //	condition := isActive.EqExpr(isEnabled)
 func (b Bool) EqExpr(expr any) clause.Expression {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return clause.Eq{Column: b.column, Value: expr}
 }
 
@@ -79,6 +87,9 @@ func (b Bool) EqExpr(expr any) clause.Expression {
 //	// Generate: WHERE is_active != is_enabled
 //	condition := isActive.NeqExpr(isEnabled)
 func (b Bool) NeqExpr(expr any) clause.Expression {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return clause.Neq{Column: b.column, Value: expr}
 }
 
@@ -130,6 +141,9 @@ func (b Bool) Set(val bool) clause.Assignment {
 //	// Generate: SET is_active = is_enabled
 //	assignment := isActive.SetExpr(isEnabled)
 func (b Bool) SetExpr(expr any) clause.Assignment {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return clause.Assignment{Column: b.column, Value: expr}
 }
 
@@ -145,6 +159,9 @@ func (b Bool) SetExpr(expr any) clause.Assignment {
 //	// Generate: WHERE is_active AND is_enabled
 //	condition := isActive.AndExpr(isEnabled)
 func (b Bool) AndExpr(expr any) AssignerExpression {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return colOpExpr{col: b.column, sql: "? AND ?", vars: []any{b.column, expr}}
 }
 
@@ -158,6 +175,9 @@ func (b Bool) AndExpr(expr any) AssignerExpression {
 //	// Generate: WHERE is_active OR is_enabled
 //	condition := isActive.OrExpr(isEnabled)
 func (b Bool) OrExpr(expr any) AssignerExpression {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return colOpExpr{col: b.column, sql: "? OR ?", vars: []any{b.column, expr}}
 }
 
@@ -195,6 +215,9 @@ func (b Bool) Xor(value bool) AssignerExpression {
 //	// Generate: WHERE is_active XOR is_enabled
 //	condition := isActive.XorExpr(isEnabled)
 func (b Bool) XorExpr(expr any) AssignerExpression {
+	if col, ok := expr.(ColumnInterface); ok {
+		expr = col.Column()
+	}
 	return colOpExpr{col: b.column, sql: "? XOR ?", vars: []any{b.column, expr}}
 }
 

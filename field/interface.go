@@ -40,6 +40,15 @@ type (
 	}
 )
 
+func columnToName(c ColumnInterface) string {
+	col := c.Column()
+	if col.Table != "" {
+		return col.Table + "." + col.Name
+	}
+
+	return col.Name
+}
+
 func BuildSelectExpr(ss ...Selectable) clause.Expression {
 	if len(ss) == 0 {
 		return nil
