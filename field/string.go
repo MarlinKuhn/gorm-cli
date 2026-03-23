@@ -210,6 +210,12 @@ func (s String) SetExpr(expr any) clause.Assignment {
 
 // String manipulation functions
 
+// Chain returns a StringChain that allows chaining of string operations on this field.
+// This is useful for building complex expressions that can be used in Select, Where, or Update clauses.
+func (s String) Chain() StringChain {
+	return StringChain{column: s.column}
+}
+
 // Concat creates a string concatenation expression.
 func (s String) Concat(value string) AssignerExpression {
 	return colOpExpr{col: s.column, sql: "CONCAT(?, ?)", vars: []any{s.column, value}}
