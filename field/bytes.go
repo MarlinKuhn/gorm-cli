@@ -107,15 +107,23 @@ func (b Bytes) IsNotNull() clause.Expression {
 
 // Set creates an assignment expression for UPDATE operations (field = value).
 func (b Bytes) Set(val []byte) clause.Assignment {
-	return clause.Assignment{Column: b.column, Value: val}
+	column := b.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return clause.Assignment{Column: column, Value: val}
 }
 
 // SetExpr creates an assignment expression for UPDATE operations (field = expression).
 func (b Bytes) SetExpr(expr any) clause.Assignment {
+	column := b.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
 	if col, ok := expr.(ColumnInterface); ok {
 		expr = col.Column()
 	}
-	return clause.Assignment{Column: b.column, Value: expr}
+	return clause.Assignment{Column: column, Value: expr}
 }
 
 // Binary functions

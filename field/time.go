@@ -169,15 +169,23 @@ func (t Time) IsNotNull() clause.Expression {
 
 // Set creates an assignment expression for UPDATE operations (field = value).
 func (t Time) Set(val time.Time) clause.Assignment {
-	return clause.Assignment{Column: t.column, Value: val}
+	column := t.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return clause.Assignment{Column: column, Value: val}
 }
 
 // SetExpr creates an assignment expression for UPDATE operations (field = expression).
 func (t Time) SetExpr(expr any) clause.Assignment {
+	column := t.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
 	if col, ok := expr.(ColumnInterface); ok {
 		expr = col.Column()
 	}
-	return clause.Assignment{Column: t.column, Value: expr}
+	return clause.Assignment{Column: column, Value: expr}
 }
 
 // Time-specific functions

@@ -23,6 +23,13 @@ func (j JSON) WithColumn(name string) JSON {
 	return JSON{column: c}
 }
 
+// WithTable sets the column name for this JSON field.
+func (j JSON) WithTable(name string) JSON {
+	c := j.column
+	c.Table = name
+	return JSON{column: c}
+}
+
 // Equal builds an expression using database-specific JSON functions to compare
 // the JSON value at the given JSON path with the provided value.
 // Example: json_extract(column, '$.vip') = 1

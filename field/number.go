@@ -169,15 +169,23 @@ func (n Number[T]) IsNotNull() clause.Expression {
 
 // Set creates an assignment expression for UPDATE operations (field = value).
 func (n Number[T]) Set(val T) clause.Assignment {
-	return clause.Assignment{Column: n.column, Value: val}
+	column := n.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return clause.Assignment{Column: column, Value: val}
 }
 
 // SetExpr creates an assignment expression for UPDATE operations (field = expression).
 func (n Number[T]) SetExpr(expr any) clause.Assignment {
+	column := n.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
 	if col, ok := expr.(ColumnInterface); ok {
 		expr = col.Column()
 	}
-	return clause.Assignment{Column: n.column, Value: expr}
+	return clause.Assignment{Column: column, Value: expr}
 }
 
 // Basic SQL expression functions for arithmetic operations
@@ -189,22 +197,38 @@ func (n Number[T]) Chain() NumberChain[T] {
 
 // Incr creates an increment expression (field + value).
 func (n Number[T]) Incr(value T) AssignerExpression {
-	return colOpExpr{col: n.column, sql: "? + ?", vars: []any{n.column, value}}
+	column := n.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return colOpExpr{col: column, sql: "? + ?", vars: []any{n.column, value}}
 }
 
 // Decr creates a decrement expression (field - value).
 func (n Number[T]) Decr(value T) AssignerExpression {
-	return colOpExpr{col: n.column, sql: "? - ?", vars: []any{n.column, value}}
+	column := n.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return colOpExpr{col: column, sql: "? - ?", vars: []any{n.column, value}}
 }
 
 // Mul creates a multiplication expression (field * value).
 func (n Number[T]) Mul(value T) AssignerExpression {
-	return colOpExpr{col: n.column, sql: "? * ?", vars: []any{n.column, value}}
+	column := n.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return colOpExpr{col: column, sql: "? * ?", vars: []any{n.column, value}}
 }
 
 // Div creates a division expression (field / value).
 func (n Number[T]) Div(value T) AssignerExpression {
-	return colOpExpr{col: n.column, sql: "? / ?", vars: []any{n.column, value}}
+	column := n.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return colOpExpr{col: column, sql: "? / ?", vars: []any{n.column, value}}
 }
 
 // Expr creates a custom SQL expression with parameters.

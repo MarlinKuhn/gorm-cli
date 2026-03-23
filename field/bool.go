@@ -128,7 +128,11 @@ func (b Bool) IsNotNull() clause.Expression {
 //	// Generate: SET is_active = true
 //	assignment := isActive.Set(true)
 func (b Bool) Set(val bool) clause.Assignment {
-	return clause.Assignment{Column: b.column, Value: val}
+	column := b.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return clause.Assignment{Column: column, Value: val}
 }
 
 // SetExpr creates an assignment expression for UPDATE operations (field = expression).
@@ -141,10 +145,14 @@ func (b Bool) Set(val bool) clause.Assignment {
 //	// Generate: SET is_active = is_enabled
 //	assignment := isActive.SetExpr(isEnabled)
 func (b Bool) SetExpr(expr any) clause.Assignment {
+	column := b.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
 	if col, ok := expr.(ColumnInterface); ok {
 		expr = col.Column()
 	}
-	return clause.Assignment{Column: b.column, Value: expr}
+	return clause.Assignment{Column: column, Value: expr}
 }
 
 // Boolean logic functions

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/ast"
+	"go/parser"
 	"go/token"
 	"go/types"
 	"os"
@@ -159,9 +160,49 @@ func loadNamedStructType(modRoot, pkgPath, name string) (*ast.StructType, error)
 	return nil, fmt.Errorf("struct %s not found in package %s", name, pkgPath)
 }
 
+func loadLocalNamedStructType(dir, pkgName, name string) (*ast.StructType, error) {
+	fset := token.NewFileSet()
+	pkgs, err := parser.ParseDir(fset, dir, func(info os.FileInfo) bool {
+		return !shouldSkipFile(filepath.Join(dir, info.Name()))
+	}, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse dir %q: %w", dir, err)
+	}
+
+	if pkgName == "" && len(pkgs) == 1 {
+		for only := range pkgs {
+			pkgName = only
+		}
+	}
+
+	pkg, ok := pkgs[pkgName]
+	if !ok {
+		return nil, fmt.Errorf("package %s not found in dir %s", pkgName, dir)
+	}
+
+	for _, file := range pkg.Files {
+		for _, decl := range file.Decls {
+			gen, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range gen.Specs {
+				ts, ok := spec.(*ast.TypeSpec)
+				if ok && ts.Name.Name == name {
+					if st, ok := ts.Type.(*ast.StructType); ok {
+						return st, nil
+					}
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("struct %s not found in dir %s", name, dir)
+}
+
 // generateDBName generates database column name using GORM's NamingStrategy and COLUMN tag.
 func generateDBName(fieldName, gormTag string) string {
-	tagSettings := schema.ParseTagSetting(reflect.StructTag(gormTag).Get("gorm"), ";")
+	tagSettings := parseGormTagSettings(gormTag)
 	if tagSettings["COLUMN"] != "" {
 		return tagSettings["COLUMN"]
 	}
@@ -169,6 +210,10 @@ func generateDBName(fieldName, gormTag string) string {
 	// Use GORM's NamingStrategy with IdentifierMaxLength: 64
 	ns := schema.NamingStrategy{IdentifierMaxLength: 64}
 	return ns.ColumnName("", fieldName)
+}
+
+func parseGormTagSettings(tag string) map[string]string {
+	return schema.ParseTagSetting(reflect.StructTag(tag).Get("gorm"), ";")
 }
 
 // mergeImports appends imports from src into dst if not already present (by Path)

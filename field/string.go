@@ -189,15 +189,23 @@ func (s String) IsNotNull() clause.Expression {
 
 // Set creates an assignment expression for UPDATE operations (field = value).
 func (s String) Set(val string) clause.Assignment {
-	return clause.Assignment{Column: s.column, Value: val}
+	column := s.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return clause.Assignment{Column: column, Value: val}
 }
 
 // SetExpr creates an assignment expression for UPDATE operations (field = expression).
 func (s String) SetExpr(expr any) clause.Assignment {
+	column := s.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
 	if col, ok := expr.(ColumnInterface); ok {
 		expr = col.Column()
 	}
-	return clause.Assignment{Column: s.column, Value: expr}
+	return clause.Assignment{Column: column, Value: expr}
 }
 
 // String manipulation functions
@@ -214,32 +222,56 @@ func (s String) Length() clause.Expression {
 
 // Upper creates an uppercase conversion expression.
 func (s String) Upper() AssignerExpression {
-	return colOpExpr{col: s.column, sql: "UPPER(?)", vars: []any{s.column}}
+	column := s.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return colOpExpr{col: column, sql: "UPPER(?)", vars: []any{s.column}}
 }
 
 // Lower creates a lowercase conversion expression.
 func (s String) Lower() AssignerExpression {
-	return colOpExpr{col: s.column, sql: "LOWER(?)", vars: []any{s.column}}
+	column := s.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return colOpExpr{col: column, sql: "LOWER(?)", vars: []any{s.column}}
 }
 
 // Trim creates a whitespace trimming expression.
 func (s String) Trim() AssignerExpression {
-	return colOpExpr{col: s.column, sql: "TRIM(?)", vars: []any{s.column}}
+	column := s.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return colOpExpr{col: column, sql: "TRIM(?)", vars: []any{s.column}}
 }
 
 // Left creates a left substring expression.
 func (s String) Left(length int) AssignerExpression {
-	return colOpExpr{col: s.column, sql: "LEFT(?, ?)", vars: []any{s.column, length}}
+	column := s.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return colOpExpr{col: column, sql: "LEFT(?, ?)", vars: []any{s.column, length}}
 }
 
 // Right creates a right substring expression.
 func (s String) Right(length int) AssignerExpression {
-	return colOpExpr{col: s.column, sql: "RIGHT(?, ?)", vars: []any{s.column, length}}
+	column := s.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return colOpExpr{col: column, sql: "RIGHT(?, ?)", vars: []any{s.column, length}}
 }
 
 // Substring creates a substring expression.
 func (s String) Substring(start, length int) AssignerExpression {
-	return colOpExpr{col: s.column, sql: "SUBSTRING(?, ?, ?)", vars: []any{s.column, start, length}}
+	column := s.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return colOpExpr{col: column, sql: "SUBSTRING(?, ?, ?)", vars: []any{s.column, start, length}}
 }
 
 // Expr creates a custom SQL expression with parameters.

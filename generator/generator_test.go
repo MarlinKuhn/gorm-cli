@@ -542,6 +542,191 @@ type User struct {
 	}
 }
 
+func TestGormEmbeddedTagFlattensNamedStructAndAppliesPrefix(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module temp.test\n\ngo 1.21\n"), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+
+	src := `package sample
+
+type Filter struct {
+	Code    string
+	Company Company
+}
+
+type User struct {
+	Filter Filter ` + "`gorm:\"embedded;embeddedPrefix:filter_\"`" + `
+	Name   string
+}
+
+type Company struct {
+	ID uint
+}
+`
+	inputPath := filepath.Join(dir, "sample.go")
+	if err := os.WriteFile(inputPath, []byte(src), 0o644); err != nil {
+		t.Fatalf("write sample.go: %v", err)
+	}
+
+	g := &Generator{Files: map[string]*File{}, OutPath: filepath.Join(dir, "out")}
+	if err := g.Process(inputPath); err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	var userFile *File
+	var userStruct *Struct
+	for _, file := range g.Files {
+		for i := range file.Structs {
+			if file.Structs[i].Name == "User" {
+				userFile = file
+				userStruct = &file.Structs[i]
+				break
+			}
+		}
+		if userStruct != nil {
+			break
+		}
+	}
+
+	if userStruct == nil || userFile == nil {
+		t.Fatalf("failed to find parsed User struct")
+	}
+
+	var gotFields []Field
+	for _, f := range userStruct.Fields {
+		gotFields = append(gotFields, Field{Name: f.Name, DBName: f.DBName, GoType: f.GoType})
+	}
+
+	wantFields := []Field{
+		{Name: "Code", DBName: "filter_code", GoType: "string"},
+		{Name: "Company", DBName: "filter_company", GoType: "temp.test.Company"},
+		{Name: "Name", DBName: "name", GoType: "string"},
+	}
+	if !reflect.DeepEqual(gotFields, wantFields) {
+		t.Fatalf("expected embedded tagged fields %+v, got %+v", wantFields, gotFields)
+	}
+
+	userStruct.RelationFields = userFile.buildRelationFields(*userStruct)
+
+	gotRelations := make([]string, 0, len(userStruct.RelationFields))
+	for _, rel := range userStruct.RelationFields {
+		gotRelations = append(gotRelations, rel.Name)
+	}
+
+	wantRelations := []string{"Company"}
+	if !reflect.DeepEqual(gotRelations, wantRelations) {
+		t.Fatalf("expected embedded tagged relations %v, got %v", wantRelations, gotRelations)
+	}
+}
+
+func TestAnonymousEmbeddedPrefixAppliesToFlattenedFields(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module temp.test\n\ngo 1.21\n"), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+
+	src := `package sample
+
+type Filter struct {
+	Code string
+}
+
+type User struct {
+	Filter ` + "`gorm:\"embeddedPrefix:filter_\"`" + `
+}
+`
+	inputPath := filepath.Join(dir, "sample.go")
+	if err := os.WriteFile(inputPath, []byte(src), 0o644); err != nil {
+		t.Fatalf("write sample.go: %v", err)
+	}
+
+	g := &Generator{Files: map[string]*File{}, OutPath: filepath.Join(dir, "out")}
+	if err := g.Process(inputPath); err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	var userStruct *Struct
+	for _, file := range g.Files {
+		for i := range file.Structs {
+			if file.Structs[i].Name == "User" {
+				userStruct = &file.Structs[i]
+				break
+			}
+		}
+		if userStruct != nil {
+			break
+		}
+	}
+
+	if userStruct == nil {
+		t.Fatalf("failed to find parsed User struct")
+	}
+
+	if len(userStruct.Fields) != 1 {
+		t.Fatalf("expected 1 flattened field, got %d", len(userStruct.Fields))
+	}
+	if got := userStruct.Fields[0].DBName; got != "filter_code" {
+		t.Fatalf("expected anonymous embedded prefix DB name %q, got %q", "filter_code", got)
+	}
+}
+
+func TestExamplesEmbeddedModelsFlattenAcrossFilesAndTags(t *testing.T) {
+	inputPath, err := filepath.Abs("../examples/models/embedded_user.go")
+	if err != nil {
+		t.Fatalf("failed to get absolute path: %v", err)
+	}
+
+	g := &Generator{Files: map[string]*File{}, OutPath: filepath.Join(t.TempDir(), "out")}
+	if err := g.Process(inputPath); err != nil {
+		t.Fatalf("Process error: %v", err)
+	}
+
+	structs := map[string]*Struct{}
+	for _, file := range g.Files {
+		for i := range file.Structs {
+			s := &file.Structs[i]
+			if s.Name == "EmbeddedUser" || s.Name == "TaggedEmbeddedUser" {
+				structs[s.Name] = s
+			}
+		}
+	}
+
+	embeddedUser := structs["EmbeddedUser"]
+	if embeddedUser == nil {
+		t.Fatalf("failed to find EmbeddedUser struct")
+	}
+
+	taggedEmbeddedUser := structs["TaggedEmbeddedUser"]
+	if taggedEmbeddedUser == nil {
+		t.Fatalf("failed to find TaggedEmbeddedUser struct")
+	}
+
+	if !containsField(*embeddedUser, "Code", "code") {
+		t.Fatalf("expected EmbeddedUser to expose flattened Code/code field, got %+v", embeddedUser.Fields)
+	}
+	if !containsField(*embeddedUser, "Pets", "pets") {
+		t.Fatalf("expected EmbeddedUser to expose flattened Pets/pets field, got %+v", embeddedUser.Fields)
+	}
+	if !containsField(*taggedEmbeddedUser, "Code", "filter_code") {
+		t.Fatalf("expected TaggedEmbeddedUser to expose prefixed Code/filter_code field, got %+v", taggedEmbeddedUser.Fields)
+	}
+	if !containsField(*taggedEmbeddedUser, "Pets", "filter_pets") {
+		t.Fatalf("expected TaggedEmbeddedUser to expose prefixed Pets/filter_pets field, got %+v", taggedEmbeddedUser.Fields)
+	}
+}
+
+func containsField(s Struct, name, dbName string) bool {
+	for _, field := range s.Fields {
+		if field.Name == name && field.DBName == dbName {
+			return true
+		}
+	}
+	return false
+}
+
 func TestEmbeddedStructShadowedFieldsStayUnique(t *testing.T) {
 	dir := t.TempDir()
 

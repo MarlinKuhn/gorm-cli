@@ -134,7 +134,11 @@ func (f Field[T]) IsNotNull() clause.Expression {
 //	// Generate: SET status = 'active'
 //	assignment := field.Set("active")
 func (f Field[T]) Set(value T) clause.Assignment {
-	return clause.Assignment{Column: f.column, Value: value}
+	column := f.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
+	return clause.Assignment{Column: column, Value: value}
 }
 
 // SetExpr creates an assignment expression for UPDATE operations (field = expression).
@@ -147,10 +151,14 @@ func (f Field[T]) Set(value T) clause.Assignment {
 //	// Generate: SET field1 = field2
 //	assignment := field1.SetExpr(field2)
 func (f Field[T]) SetExpr(expr any) clause.Assignment {
+	column := f.column
+	if column.Table == clause.CurrentTable {
+		column.Table = ""
+	}
 	if col, ok := expr.(ColumnInterface); ok {
 		expr = col.Column()
 	}
-	return clause.Assignment{Column: f.column, Value: expr}
+	return clause.Assignment{Column: column, Value: expr}
 }
 
 // Expr creates a custom SQL expression with parameters.

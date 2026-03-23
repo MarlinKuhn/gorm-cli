@@ -1043,9 +1043,20 @@ func (p *File) processStructType(typeSpec *ast.TypeSpec, data *ast.StructType, p
 	}
 
 	for _, field := range data.Fields.List {
+		var fieldTag string
+		if field.Tag != nil {
+			fieldTag, _ = strconv.Unquote(field.Tag.Value)
+		}
+
 		// Handle anonymous embedding first
 		if len(field.Names) == 0 {
-			if p.handleAnonymousEmbedding(field, pkgName, mergeField) {
+			if p.handleEmbeddedField(field, pkgName, fieldTag, mergeField) {
+				continue
+			}
+		}
+
+		if len(field.Names) > 0 && p.isEmbeddedByTag(fieldTag) {
+			if p.handleEmbeddedField(field, pkgName, fieldTag, mergeField) {
 				continue
 			}
 		}
@@ -1053,11 +1064,6 @@ func (p *File) processStructType(typeSpec *ast.TypeSpec, data *ast.StructType, p
 		// Add fields to struct
 		for _, n := range field.Names {
 			if n.IsExported() {
-				var fieldTag string
-				if field.Tag != nil {
-					fieldTag, _ = strconv.Unquote(field.Tag.Value)
-				}
-
 				mergeField(Field{
 					Name:        n.Name,
 					DBName:      generateDBName(n.Name, fieldTag),
@@ -1206,18 +1212,30 @@ func (p *File) getImport(path string) *Import {
 	return nil
 }
 
-// handleAnonymousEmbedding processes anonymous embedded fields and returns true if handled
-func (p *File) handleAnonymousEmbedding(field *ast.Field, pkgName string, mergeField func(Field)) bool {
-	// Helper function to add fields from embedded struct
+func (p *File) isEmbeddedByTag(fieldTag string) bool {
+	_, ok := parseGormTagSettings(fieldTag)["EMBEDDED"]
+	return ok
+}
+
+func (p *File) embeddedPrefix(fieldTag string) string {
+	return parseGormTagSettings(fieldTag)["EMBEDDEDPREFIX"]
+}
+
+// handleEmbeddedField processes embedded fields and returns true if handled.
+func (p *File) handleEmbeddedField(field *ast.Field, pkgName, fieldTag string, mergeField func(Field)) bool {
+	prefix := p.embeddedPrefix(fieldTag)
+
+	// Helper function to add fields from embedded struct.
 	addEmbeddedFields := func(structType *ast.StructType, typeName, embeddedPkgName string) bool {
 		sub := p.processStructType(&ast.TypeSpec{Name: &ast.Ident{Name: typeName}}, structType, embeddedPkgName)
 		for _, field := range sub.Fields {
+			field.DBName = prefix + field.DBName
 			mergeField(field)
 		}
 		return true
 	}
 
-	// Helper function to load and process external struct type
+	// Helper function to load and process external struct type.
 	loadAndProcessExternalStruct := func(pkgName, typeName string) bool {
 		st, err := loadNamedStructType(p.goModDir, p.getFullImportPath(pkgName), typeName)
 		if err != nil || st == nil {
@@ -1226,7 +1244,7 @@ func (p *File) handleAnonymousEmbedding(field *ast.Field, pkgName string, mergeF
 		return addEmbeddedFields(st, typeName, pkgName)
 	}
 
-	// Unwrap pointer types to get the underlying type
+	// Unwrap pointer types to get the underlying type.
 	fieldType := field.Type
 	if starExpr, ok := fieldType.(*ast.StarExpr); ok {
 		fieldType = starExpr.X
@@ -1241,6 +1259,9 @@ func (p *File) handleAnonymousEmbedding(field *ast.Field, pkgName string, mergeF
 					return addEmbeddedFields(st, t.Name, pkgName)
 				}
 			}
+		}
+		if st, err := loadLocalNamedStructType(filepath.Dir(p.inputPath), p.Package, t.Name); err == nil && st != nil {
+			return addEmbeddedFields(st, t.Name, "")
 		}
 		if p.PackagePath != "" {
 			st, err := loadNamedStructType(p.goModDir, p.PackagePath, t.Name)
