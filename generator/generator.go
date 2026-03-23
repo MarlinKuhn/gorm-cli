@@ -1224,11 +1224,16 @@ func (p *File) embeddedPrefix(fieldTag string) string {
 // handleEmbeddedField processes embedded fields and returns true if handled.
 func (p *File) handleEmbeddedField(field *ast.Field, pkgName, fieldTag string, mergeField func(Field)) bool {
 	prefix := p.embeddedPrefix(fieldTag)
+	namePrefix := ""
+	if len(field.Names) > 0 {
+		namePrefix = field.Names[0].Name
+	}
 
 	// Helper function to add fields from embedded struct.
 	addEmbeddedFields := func(structType *ast.StructType, typeName, embeddedPkgName string) bool {
 		sub := p.processStructType(&ast.TypeSpec{Name: &ast.Ident{Name: typeName}}, structType, embeddedPkgName)
 		for _, field := range sub.Fields {
+			field.Name = namePrefix + field.Name
 			field.DBName = prefix + field.DBName
 			mergeField(field)
 		}

@@ -78,8 +78,8 @@ func (g genEmbeddedUser) WithTable(table string) genEmbeddedUser {
 var EmbeddedUser = genEmbeddedUser{}.WithTable(clause.CurrentTable)
 
 type taggedEmbeddedUserRelationsFields struct {
-	Pets    *petSliceRelation
-	Company field.Struct[models.Company]
+	FilterPets    *petSliceRelation
+	FilterCompany field.Struct[models.Company]
 }
 
 type taggedEmbeddedUserStructRelation struct {
@@ -94,8 +94,8 @@ type taggedEmbeddedUserSliceRelation struct {
 
 func newTaggedEmbeddedUserRelationsFields(prefix string, depth int) taggedEmbeddedUserRelationsFields {
 	return taggedEmbeddedUserRelationsFields{
-		Pets:    newPetSliceRelation(strings.TrimPrefix(prefix+".Pets", "."), depth-1),
-		Company: newCompanyStructRelation(strings.TrimPrefix(prefix+".Company", "."), depth-1),
+		FilterPets:    newPetSliceRelation(strings.TrimPrefix(prefix+".FilterPets", "."), depth-1),
+		FilterCompany: newCompanyStructRelation(strings.TrimPrefix(prefix+".FilterCompany", "."), depth-1),
 	}
 }
 
@@ -126,18 +126,18 @@ func newTaggedEmbeddedUserSliceRelation(prefix string, depth int) *taggedEmbedde
 var TaggedEmbeddedUserRelations = newTaggedEmbeddedUserRelationsFields("", 4)
 
 type genTaggedEmbeddedUser struct {
-	Code    field.String
-	Pets    field.Slice[models.Pet]
-	Company field.Struct[models.Company]
-	Name    field.String
+	FilterCode    field.String
+	FilterPets    field.Slice[models.Pet]
+	FilterCompany field.Struct[models.Company]
+	Name          field.String
 }
 
 func (g genTaggedEmbeddedUser) WithTable(table string) genTaggedEmbeddedUser {
 	return genTaggedEmbeddedUser{
-		Code:    field.String{}.WithColumn("filter_code").WithTable(table),
-		Pets:    field.Slice[models.Pet]{}.WithName("Pets"),
-		Company: field.Struct[models.Company]{}.WithName("Company"),
-		Name:    field.String{}.WithColumn("name").WithTable(table),
+		FilterCode:    field.String{}.WithColumn("filter_code").WithTable(table),
+		FilterPets:    field.Slice[models.Pet]{}.WithName("FilterPets"),
+		FilterCompany: field.Struct[models.Company]{}.WithName("FilterCompany"),
+		Name:          field.String{}.WithColumn("name").WithTable(table),
 	}
 }
 

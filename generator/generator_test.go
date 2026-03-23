@@ -600,8 +600,8 @@ type Company struct {
 	}
 
 	wantFields := []Field{
-		{Name: "Code", DBName: "filter_code", GoType: "string"},
-		{Name: "Company", DBName: "filter_company", GoType: "temp.test.Company"},
+		{Name: "FilterCode", DBName: "filter_code", GoType: "string"},
+		{Name: "FilterCompany", DBName: "filter_company", GoType: "temp.test.Company"},
 		{Name: "Name", DBName: "name", GoType: "string"},
 	}
 	if !reflect.DeepEqual(gotFields, wantFields) {
@@ -615,7 +615,7 @@ type Company struct {
 		gotRelations = append(gotRelations, rel.Name)
 	}
 
-	wantRelations := []string{"Company"}
+	wantRelations := []string{"FilterCompany"}
 	if !reflect.DeepEqual(gotRelations, wantRelations) {
 		t.Fatalf("expected embedded tagged relations %v, got %v", wantRelations, gotRelations)
 	}
@@ -710,11 +710,11 @@ func TestExamplesEmbeddedModelsFlattenAcrossFilesAndTags(t *testing.T) {
 	if !containsField(*embeddedUser, "Pets", "pets") {
 		t.Fatalf("expected EmbeddedUser to expose flattened Pets/pets field, got %+v", embeddedUser.Fields)
 	}
-	if !containsField(*taggedEmbeddedUser, "Code", "filter_code") {
-		t.Fatalf("expected TaggedEmbeddedUser to expose prefixed Code/filter_code field, got %+v", taggedEmbeddedUser.Fields)
+	if !containsField(*taggedEmbeddedUser, "FilterCode", "filter_code") {
+		t.Fatalf("expected TaggedEmbeddedUser to expose prefixed FilterCode/filter_code field, got %+v", taggedEmbeddedUser.Fields)
 	}
-	if !containsField(*taggedEmbeddedUser, "Pets", "filter_pets") {
-		t.Fatalf("expected TaggedEmbeddedUser to expose prefixed Pets/filter_pets field, got %+v", taggedEmbeddedUser.Fields)
+	if !containsField(*taggedEmbeddedUser, "FilterPets", "filter_pets") {
+		t.Fatalf("expected TaggedEmbeddedUser to expose prefixed FilterPets/filter_pets field, got %+v", taggedEmbeddedUser.Fields)
 	}
 }
 
