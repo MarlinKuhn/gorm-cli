@@ -8,7 +8,7 @@ var (
 package {{.ToPackage}}
 
 import (
-    {{- if and (.HasAnyRelations .UsedRelations) }}
+    {{- if (and (.HasAnyRelations) (.UsedRelations)) }}
     "strings"
     {{- end }}
     "gorm.io/gorm"
