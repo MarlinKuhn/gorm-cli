@@ -49,7 +49,7 @@ func (e {{$IfaceName}}Impl[T]) {{.Name}}({{.ParamsString}}) ({{.ResultString}}) 
 {{end}}
 
 {{range .Structs}}
-{{- if .UsedRelations}}
+{{- if $.UsedRelations}}
 {{if .HasRelationFields}}
 type {{.RelationsFieldsTypeName}}{{.TypeParamsSuffix}} struct {
 	{{range .RelationFields -}}
