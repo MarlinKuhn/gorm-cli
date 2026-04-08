@@ -8,7 +8,7 @@ var (
 package {{.ToPackage}}
 
 import (
-    {{- if .HasAnyRelations }}
+    {{- if and (.HasAnyRelations .UsedRelations) }}
     "strings"
     {{- end }}
     "gorm.io/gorm"
@@ -49,6 +49,7 @@ func (e {{$IfaceName}}Impl[T]) {{.Name}}({{.ParamsString}}) ({{.ResultString}}) 
 {{end}}
 
 {{range .Structs}}
+{{- if .UsedRelations}}
 {{if .HasRelationFields}}
 type {{.RelationsFieldsTypeName}}{{.TypeParamsSuffix}} struct {
 	{{range .RelationFields -}}
@@ -109,6 +110,7 @@ func {{.NewSliceRelationFuncName}}{{.TypeParamsSuffix}}(prefix string, depth int
 
 {{if .HasRelations}}
 var {{.RelationsVarName}} = {{.NewRelationsFieldsFuncName}}("", {{$.MaxRelationDepth}})
+{{end}}
 {{end}}
 
 type gen{{.Name}} struct {

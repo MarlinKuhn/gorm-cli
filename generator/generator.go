@@ -28,9 +28,10 @@ import (
 
 type (
 	Generator struct {
-		Typed   bool
-		Files   map[string]*File
-		OutPath string
+		Typed     bool
+		Relations bool
+		Files     map[string]*File
+		OutPath   string
 	}
 	File struct {
 		ToPackage          string
@@ -97,11 +98,12 @@ type (
 	}
 )
 
-func Process(input, output string, typed bool) error {
+func Process(input, output string, typed, relations bool) error {
 	g := Generator{
-		Typed:   typed,
-		Files:   map[string]*File{},
-		OutPath: output,
+		Typed:     typed,
+		Relations: relations,
+		Files:     map[string]*File{},
+		OutPath:   output,
 	}
 
 	err := g.Process(input)
@@ -906,6 +908,10 @@ func (p *File) tryParseConfig(vs *ast.ValueSpec) *genconfig.Config {
 
 func (p File) UsedTypedAPI() bool {
 	return p.Generator.Typed
+}
+
+func (p File) UsedRelations() bool {
+	return p.Generator.Relations
 }
 
 // parseConfigLiteral parses a cmd.Config composite literal into a Config value.

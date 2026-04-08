@@ -9,7 +9,7 @@ import (
 var defaultOutPath = "./g"
 
 func New() *cobra.Command {
-	var typed bool
+	var typed, relations bool
 	var input, output string
 
 	cmd := &cobra.Command{
@@ -37,6 +37,7 @@ func New() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(&typed, "typed", "t", true, "Generated Typed API")
+	cmd.Flags().BoolVarP(&relations, "relations", "r", true, "Generated relations API")
 	cmd.Flags().StringVarP(&output, "output", "o", defaultOutPath, "Directory to place generated code")
 	cmd.Flags().StringVarP(&input, "input", "i", "", "Path to Go interface file with raw SQL annotations")
 	cobra.CheckErr(cmd.MarkFlagRequired("input"))
